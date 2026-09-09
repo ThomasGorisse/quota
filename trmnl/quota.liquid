@@ -2,8 +2,10 @@
   Quota — TRMNL private plugin, "full" view (800 x 480, 1-bit e-ink).
 
   Fed by the worker cron every 5 minutes with flat merge variables:
-    claude_session, claude_weekly, codex_session, codex_weekly, codex_reserve  (percent USED)
-    <name>_resets_in ("2h 10m"), severity, updated ("HH:MM"), stale
+    claude_session, claude_weekly, codex_session, codex_weekly, codex_reserve,
+    gemini_session, gemini_weekly  (percent USED)
+    <name>_resets_in ("2h 10m"), <name>_label, severity, updated ("HH:MM"), stale
+    gemini_present  (false until the Gemini CLI is paired — then the board grows a third column)
 
   The rings show what is LEFT, per docs/DESIGN.md: the number you want to read is
   the remaining budget. Webhook payloads reach the template either flat or under
@@ -19,6 +21,13 @@
 {%- assign c_weekly_in = claude_weekly_resets_in | default: merge_variables.claude_weekly_resets_in -%}
 {%- assign x_session_in = codex_session_resets_in | default: merge_variables.codex_session_resets_in -%}
 {%- assign x_weekly_in = codex_weekly_resets_in | default: merge_variables.codex_weekly_resets_in -%}
+{%- assign g_session = gemini_session | default: merge_variables.gemini_session | default: 0 -%}
+{%- assign g_weekly = gemini_weekly | default: merge_variables.gemini_weekly | default: 0 -%}
+{%- assign g_session_in = gemini_session_resets_in | default: merge_variables.gemini_session_resets_in -%}
+{%- assign g_weekly_in = gemini_weekly_resets_in | default: merge_variables.gemini_weekly_resets_in -%}
+{%- assign g_session_label = gemini_session_label | default: merge_variables.gemini_session_label -%}
+{%- assign g_weekly_label = gemini_weekly_label | default: merge_variables.gemini_weekly_label -%}
+{%- assign has_gemini = gemini_present | default: merge_variables.gemini_present | default: false -%}
 {%- assign updated_at = updated | default: merge_variables.updated | default: '--:--' -%}
 {%- assign is_stale = stale | default: merge_variables.stale | default: false -%}
 {%- assign sev = severity | default: merge_variables.severity | default: 'ok' -%}
@@ -26,15 +35,24 @@
 {%- comment -%} Remaining, and the arc length for a r=80 ring (circumference 502.65). {%- endcomment -%}
 {%- assign c_left = 100 | minus: c_session -%}
 {%- assign x_left = 100 | minus: x_session -%}
+{%- assign g_left = 100 | minus: g_session -%}
 {%- assign c_dash = c_left | times: 5.0265 -%}
 {%- assign x_dash = x_left | times: 5.0265 -%}
+{%- assign g_dash = g_left | times: 5.0265 -%}
+
+{%- comment -%} Two providers keep the big rings; a third one shrinks them to fit 800 px. {%- endcomment -%}
+{%- if has_gemini -%}
+  {%- assign cols = 'grid grid--cols-3' -%}{%- assign ring = 150 -%}{%- assign name_size = 20 -%}{%- assign note_size = 15 -%}
+{%- else -%}
+  {%- assign cols = 'grid grid--cols-2' -%}{%- assign ring = 196 -%}{%- assign name_size = 22 -%}{%- assign note_size = 18 -%}
+{%- endif -%}
 
 <div class="view view--full">
   <div class="layout">
-    <div class="grid grid--cols-2" style="align-items: start;">
+    <div class="{{ cols }}" style="align-items: start;">
 
       <div class="col col--center" style="text-align: center;">
-        <svg viewBox="0 0 200 200" width="196" height="196" role="img"
+        <svg viewBox="0 0 200 200" width="{{ ring }}" height="{{ ring }}" role="img"
              aria-label="Claude session {{ c_left }} percent left">
           <circle cx="100" cy="100" r="80" fill="none" stroke="black" stroke-width="2"
                   stroke-dasharray="2 6" />
@@ -44,17 +62,17 @@
           <text x="100" y="98" text-anchor="middle" font-size="52" font-weight="700">{{ c_left }}%</text>
           <text x="100" y="126" text-anchor="middle" font-size="18">left</text>
         </svg>
-        <div class="title" style="font-size: 22px; font-weight: 600;">CLAUDE</div>
-        <div class="label label--underline" style="font-size: 18px;">
+        <div class="title" style="font-size: {{ name_size }}px; font-weight: 600;">CLAUDE</div>
+        <div class="label label--underline" style="font-size: {{ note_size }}px;">
           {% if c_session_in and c_session_in != '' %}resets in {{ c_session_in }}{% else %}5 h window{% endif %}
         </div>
-        <div class="label" style="font-size: 18px; margin-top: 6px;">
+        <div class="label" style="font-size: {{ note_size }}px; margin-top: 6px;">
           Week {{ 100 | minus: c_weekly }}% left{% if c_weekly_in and c_weekly_in != '' %} · {{ c_weekly_in }}{% endif %}
         </div>
       </div>
 
       <div class="col col--center" style="text-align: center;">
-        <svg viewBox="0 0 200 200" width="196" height="196" role="img"
+        <svg viewBox="0 0 200 200" width="{{ ring }}" height="{{ ring }}" role="img"
              aria-label="Codex session {{ x_left }} percent left">
           <circle cx="100" cy="100" r="80" fill="none" stroke="black" stroke-width="2"
                   stroke-dasharray="2 6" />
@@ -64,14 +82,37 @@
           <text x="100" y="98" text-anchor="middle" font-size="52" font-weight="700">{{ x_left }}%</text>
           <text x="100" y="126" text-anchor="middle" font-size="18">left</text>
         </svg>
-        <div class="title" style="font-size: 22px; font-weight: 600;">CODEX</div>
-        <div class="label label--underline" style="font-size: 18px;">
+        <div class="title" style="font-size: {{ name_size }}px; font-weight: 600;">CODEX</div>
+        <div class="label label--underline" style="font-size: {{ note_size }}px;">
           {% if x_session_in and x_session_in != '' %}resets in {{ x_session_in }}{% else %}5 h window{% endif %}
         </div>
-        <div class="label" style="font-size: 18px; margin-top: 6px;">
+        <div class="label" style="font-size: {{ note_size }}px; margin-top: 6px;">
           Week {{ 100 | minus: x_weekly }}% left · Reserve {{ 100 | minus: x_reserve }}%
         </div>
       </div>
+
+      {%- comment -%} No Gemini credential, no third column: the board stays a pair. {%- endcomment -%}
+      {% if has_gemini %}
+      <div class="col col--center" style="text-align: center;">
+        <svg viewBox="0 0 200 200" width="{{ ring }}" height="{{ ring }}" role="img"
+             aria-label="Gemini {{ g_left }} percent left">
+          <circle cx="100" cy="100" r="80" fill="none" stroke="black" stroke-width="2"
+                  stroke-dasharray="2 6" />
+          <circle cx="100" cy="100" r="80" fill="none" stroke="black" stroke-width="14"
+                  stroke-linecap="butt" transform="rotate(-90 100 100)"
+                  stroke-dasharray="{{ g_dash }} 502.65" />
+          <text x="100" y="98" text-anchor="middle" font-size="52" font-weight="700">{{ g_left }}%</text>
+          <text x="100" y="126" text-anchor="middle" font-size="18">left</text>
+        </svg>
+        <div class="title" style="font-size: {{ name_size }}px; font-weight: 600;">GEMINI</div>
+        <div class="label label--underline" style="font-size: {{ note_size }}px;">
+          {% if g_session_in and g_session_in != '' %}resets in {{ g_session_in }}{% else %}{{ g_session_label }}{% endif %}
+        </div>
+        <div class="label" style="font-size: {{ note_size }}px; margin-top: 6px;">
+          {% if g_weekly_label and g_weekly_label != '' %}{{ g_weekly_label }} {{ 100 | minus: g_weekly }}% left{% if g_weekly_in and g_weekly_in != '' %} · {{ g_weekly_in }}{% endif %}{% endif %}
+        </div>
+      </div>
+      {% endif %}
 
     </div>
   </div>

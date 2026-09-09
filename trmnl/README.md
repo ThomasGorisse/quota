@@ -40,6 +40,9 @@ from its `tokens:trmnl` index and stops pushing.
 |---|---|---|
 | `claude_session`, `claude_weekly` | int | percent **used** in that window |
 | `codex_session`, `codex_weekly`, `codex_reserve` | int | percent **used** |
+| `gemini_session`, `gemini_weekly` | int | percent **used**, most-consumed model first |
+| `gemini_present` | bool | false until the Gemini CLI is paired; the third column only renders when true |
+| `<name>_label` | string | the window's own name (`5 h`, `Week`, `3 Pro`) |
 | `<name>_resets_in` | string | `"2h 10m"`, `"3d 4h"`, `"now"`, or `""` if unknown |
 | `severity` | string | `ok` · `warn` · `critical` (worst window) |
 | `updated` | string | `HH:MM`, UTC, of the last collection |
