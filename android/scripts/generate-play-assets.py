@@ -9,12 +9,13 @@ one thing this script must never do is produce a *second*, slightly different Q.
 
     python3 android/scripts/generate-play-assets.py
 
-The feature graphic is still drawn here, at 4x then downsampled: Pillow has no
-antialiased arc.
+The feature graphic is the same crop again — mark, wordmark, tagline — composed at 4x and
+downsampled, because Pillow's text is only as smooth as the size it is drawn at. It used
+to draw its own three-quarter ring, which is precisely the second Q this file forbids:
+the store page showed one mark and the launcher another.
 """
 from __future__ import annotations
 
-import math
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -25,29 +26,10 @@ RES = ROOT / "app/src/main/res"
 SOURCE = ROOT.parent / "docs/brand/icon-candidates/01-battery-q.png"
 
 BG = "#0B0F14"          # background dark
-OK = "#22C55E"          # severity ok — the ring value
 TEXT = "#F3F4F6"        # text primary dark
 MUTED = "#9AA4B2"       # text secondary dark
 
 SS = 4                  # supersampling factor
-SWEEP = 0.75            # three quarters full, like a healthy quota
-START_DEG = -90.0       # 12 o'clock
-
-
-def _rgb(h: str) -> tuple[int, int, int]:
-    return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))  # type: ignore[return-value]
-
-
-def mix(bg: str, fg: str, t: float) -> tuple[int, int, int]:
-    """`fg` at `t` opacity over opaque `bg`, composited by hand.
-
-    Pillow does NOT blend the `outline=` of `ellipse`/`arc` even on an "RGBA" draw: an
-    RGBA outline lands at full opacity. The first draft passed the 15 % track as an alpha
-    tuple and got a track pixel-identical to the value arc, so the mark read as a plain
-    "O" instead of a gauge. Compositing here keeps it deterministic.
-    """
-    b, f = _rgb(bg), _rgb(fg)
-    return tuple(round(b[i] + (f[i] - b[i]) * t) for i in range(3))  # type: ignore[return-value]
 
 
 def _font(size: int, bold: bool = True) -> ImageFont.FreeTypeFont:
@@ -66,28 +48,6 @@ def _font(size: int, bold: bool = True) -> ImageFont.FreeTypeFont:
                 pass
         return f
     return ImageFont.load_default()
-
-
-def ring(draw: ImageDraw.ImageDraw, cx: float, cy: float, rc: float,
-         stroke: float, colour: str, sweep: float = SWEEP,
-         track: tuple[int, int, int] | None = None) -> None:
-    """A ring with a track and a round-capped value arc (the DESIGN.md gauge).
-
-    `rc` is the radius of the stroke *centreline*. Pillow draws `arc`/`ellipse` inward
-    from the bounding box, so the box has to be inflated by half the stroke — and the
-    caps have to sit on `rc`, not on the box. Getting that wrong puts two blobs outside
-    the ring, which is exactly what the first draft of this mark did.
-    """
-    h = stroke / 2.0
-    box = (cx - rc - h, cy - rc - h, cx + rc + h, cy + rc + h)
-    draw.ellipse(box, outline=track or mix(BG, colour, 0.22), width=int(round(stroke)))
-    end = START_DEG + 360.0 * sweep
-    draw.arc(box, START_DEG, end, fill=colour, width=int(round(stroke)))
-    # Round caps: Pillow's arc is butt-capped, so cap it by hand, on the centreline.
-    for deg in (START_DEG, end):
-        a = math.radians(deg)
-        px, py = cx + rc * math.cos(a), cy + rc * math.sin(a)
-        draw.ellipse((px - h, py - h, px + h, py + h), fill=colour)
 
 
 # Luminance window that separates the mark from its near-black field. The generated PNG
@@ -153,31 +113,42 @@ def icon(size: int, bg: str | None = BG, safe_ratio: float = SAFE_RATIO) -> Imag
     return out
 
 
+TAGLINE = "Claude and Codex limits on your home screen"
+
+
 def feature_graphic(w: int = 1024, h: int = 500) -> Image.Image:
+    """Mark at left, wordmark and one-line tagline to its right, on the dark field.
+
+    [TAGLINE] says the same thing as `play/listing/en-US/short-description.txt`. It is
+    one line by contract, so the size is *fitted* to the column rather than guessed:
+    the first draft guessed, and the sentence ran off the right edge of the 1024 px
+    canvas — which no amount of looking at the code, as opposed to the picture, catches.
+    """
     W, H = w * SS, h * SS
     img = Image.new("RGBA", (W, H), BG)
     d = ImageDraw.Draw(img, "RGBA")
 
-    # Ring on the left third, wordmark and tagline to its right, on an 8-grid rhythm.
-    stroke = H * 0.052
-    rc = H * 0.26 - stroke / 2
-    cx, cy = W * 0.235, H / 2
-    ring(d, cx, cy, rc, stroke=stroke, colour=OK)
+    # The one Q, from the one source: no arc is drawn here.
+    box = int(round(H * 0.58))
+    glyph = mark(box, safe_ratio=0.98)
+    cx, cy = W * 0.185, H / 2
+    img.alpha_composite(glyph, (int(cx - box / 2), int(cy - box / 2)))
 
-    pct = _font(int(H * 0.155))
-    label = "75%"
-    bb = d.textbbox((0, 0), label, font=pct)
-    d.text((cx - (bb[2] - bb[0]) / 2 - bb[0], cy - (bb[3] - bb[1]) / 2 - bb[1]),
-           label, font=pct, fill=TEXT)
+    x = int(W * 0.36)
+    column = int(W * 0.94) - x          # 6 % of the canvas kept clear on the right
 
-    x = W * 0.42
     word = _font(int(H * 0.235))
     wb = d.textbbox((0, 0), "Quota", font=word)
-    d.text((x - wb[0], cy - (wb[3] - wb[1]) - H * 0.035 - wb[1]),
+    d.text((x - wb[0], cy - (wb[3] - wb[1]) - H * 0.04 - wb[1]),
            "Quota", font=word, fill=TEXT)
 
-    tag = _font(int(H * 0.085), bold=False)
-    d.text((x, cy + H * 0.045), "AI usage at a glance", font=tag, fill=MUTED)
+    size = int(H * 0.088)
+    while size > 8:
+        tag = _font(size, bold=False)
+        if d.textlength(TAGLINE, font=tag) <= column:
+            break
+        size -= 2
+    d.text((x, cy + H * 0.05), TAGLINE, font=tag, fill=MUTED)
 
     return img.resize((w, h), Image.LANCZOS)
 
