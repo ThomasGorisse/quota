@@ -36,7 +36,11 @@ shows is the actual RemoteViews Glance produces.
 | | |
 |---|---|
 | ![home light](docs/screenshots/home-light.png) | ![home dark](docs/screenshots/home-dark.png) |
-| ![2x1](docs/screenshots/widget-2x1-dark.png) | ![4x2](docs/screenshots/widget-4x2-dark.png) |
+| ![home dark, used mode](docs/screenshots/home-dark-used.png) | ![2x1](docs/screenshots/widget-2x1-dark.png) |
+| ![4x2](docs/screenshots/widget-4x2-dark.png) | |
+
+The third shot is the same screen with the header's **Left / Used** control flipped: the arcs
+grow with usage and the big number is the used percentage.
 
 And the error state, captured by pairing against the host before it was deployed:
 ![error](docs/screenshots/home-error.png)
