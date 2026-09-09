@@ -8,14 +8,23 @@ import Foundation
 /// relative to now, which is what makes the "resets in …" line worth looking at.
 enum DemoData {
 
+    /// Which shape of payload to fake. A provider reports one, two or three windows and the
+    /// layouts must hold for all of them, so the demo can produce a Codex that reports only
+    /// Week and Reserve — which is what a Codex Pro account sends today.
+    enum Variant: String {
+        case plus, pro
+    }
+
     static func snapshot(now: Date = Date(),
-                         display: DisplayMode = SharedStore.shared.displayMode) -> Snapshot {
-        Snapshot(status: status(now: now, display: display),
+                         display: DisplayMode = SharedStore.shared.displayMode,
+                         variant: Variant = LaunchOptions.demoVariant ?? .plus) -> Snapshot {
+        Snapshot(status: status(now: now, display: display, variant: variant),
                  receivedAt: now.addingTimeInterval(-5), isDemo: true)
     }
 
     static func status(now: Date = Date(),
-                       display: DisplayMode = SharedStore.shared.displayMode) -> StatusResponse {
+                       display: DisplayMode = SharedStore.shared.displayMode,
+                       variant: Variant = LaunchOptions.demoVariant ?? .plus) -> StatusResponse {
         StatusResponse(
             collectedAt: ISO8601.string(now.addingTimeInterval(-42)),
             ageSeconds: 42,
@@ -25,11 +34,16 @@ enum DemoData {
                     window("session", "5 h", used: 11, in: 130 * 60, from: now),
                     window("weekly", "Week", used: 68, in: 62 * 3600, from: now),
                 ]),
-                "codex": ProviderStatus(plan: "plus", windows: [
-                    window("session", "5 h", used: 92, in: 37 * 60, from: now),
-                    window("weekly", "Week", used: 34, in: 140 * 3600, from: now),
-                    window("reserve", "Reserve", used: 10, in: 96 * 3600, from: now),
-                ]),
+                "codex": variant == .pro
+                    ? ProviderStatus(plan: "pro", windows: [
+                        window("weekly", "Week", used: 74, in: 140 * 3600, from: now),
+                        window("reserve", "Reserve", used: 10, in: 96 * 3600, from: now),
+                    ])
+                    : ProviderStatus(plan: "plus", windows: [
+                        window("session", "5 h", used: 92, in: 37 * 60, from: now),
+                        window("weekly", "Week", used: 34, in: 140 * 3600, from: now),
+                        window("reserve", "Reserve", used: 10, in: 96 * 3600, from: now),
+                    ]),
             ],
             severity: Severity.critical.wire,
             display: display.rawValue

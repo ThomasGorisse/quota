@@ -25,6 +25,12 @@ enum LaunchOptions {
     /// `-QuotaWidgetOnly medium|small|lock` — one rendition instead of all of them.
     static var widgetOnly: String? { value(after: "-QuotaWidgetOnly") }
 
+    /// `-QuotaDemoVariant plus|pro` — the shape of the canned payload. `pro` gives a Codex
+    /// with two windows instead of three, which is what the layouts have to survive.
+    static var demoVariant: DemoData.Variant? {
+        value(after: "-QuotaDemoVariant").flatMap { DemoData.Variant(rawValue: $0) }
+    }
+
     private static func value(after flag: String) -> String? {
         guard let index = arguments.firstIndex(of: flag), index + 1 < arguments.count else { return nil }
         let next = arguments[index + 1]
@@ -35,5 +41,6 @@ enum LaunchOptions {
     static var display: DisplayMode? { nil }
     static var screen: String? { nil }
     static var widgetOnly: String? { nil }
+    static var demoVariant: DemoData.Variant? { nil }
     #endif
 }

@@ -62,6 +62,41 @@ struct ProviderStatus: Codable, Equatable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey { case plan, windows }
+
+    /// The windows worth showing where there is only room for a few — the medium widget.
+    ///
+    /// A provider reports one, two or three windows and this version must not assume which:
+    /// Claude sends `session` + `weekly`, Codex Plus adds `reserve`, and Codex Pro currently
+    /// sends only `weekly` + `reserve`. So the pick is by role — the rolling window first,
+    /// then the weekly one, then whatever else is declared — and from two slots on the busiest
+    /// window is always kept even when its role ranks last, because a red ring must never be
+    /// the one hidden.
+    func primaryWindows(limit: Int = 2) -> [Window] {
+        guard windows.count > limit else { return windows }
+        let ranked = windows.enumerated().sorted { a, b in
+            let (ra, rb) = (Self.rank(a.element), Self.rank(b.element))
+            return ra == rb ? a.offset < b.offset : ra < rb
+        }
+        var kept = Array(ranked.prefix(limit))
+        // With a single slot the role wins: a surface showing one ring per provider always
+        // shows the same window, or the reading changes shape under the user. From two slots
+        // on there is room to guarantee the busiest window is one of them.
+        if limit > 1,
+           let busiest = ranked.max(by: { $0.element.percent < $1.element.percent }),
+           !kept.contains(where: { $0.offset == busiest.offset }) {
+            kept[kept.count - 1] = busiest
+        }
+        return kept.sorted { $0.offset < $1.offset }.map(\.element)
+    }
+
+    private static func rank(_ window: Window) -> Int {
+        switch window.id {
+        case "session": return 0
+        case "weekly": return 1
+        case "reserve": return 2
+        default: return 3
+        }
+    }
 }
 
 struct Window: Codable, Equatable, Identifiable, Sendable {
@@ -200,6 +235,13 @@ struct Snapshot: Codable, Equatable, Sendable {
 
     func window(_ provider: ProviderId, _ id: String) -> Window? {
         status.providers[provider.rawValue]?.windows.first { $0.id == id }
+    }
+
+    /// The one window to show for a provider on a surface with room for a single ring: the
+    /// rolling 5 h one when the provider reports it, and otherwise whatever it ranks first —
+    /// Codex Pro, for instance, currently reports only Week and Reserve.
+    func headlineWindow(_ provider: ProviderId) -> Window? {
+        status.providers[provider.rawValue]?.primaryWindows(limit: 1).first
     }
 }
 

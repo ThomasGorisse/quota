@@ -176,6 +176,8 @@ struct ProviderCard: View {
     private var ringDiameter: CGFloat {
         let count = max(provider.windows.count, 1)
         let inner = availableWidth - 40 - ringSpacing * CGFloat(count - 1)
-        return min(max(inner / CGFloat(count), 64), 148)
+        // Capped so a provider reporting two windows and one reporting three still read as
+        // the same product on the same screen.
+        return min(max(inner / CGFloat(count), 64), 124)
     }
 }

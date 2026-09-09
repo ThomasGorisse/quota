@@ -37,8 +37,9 @@ enum QuotaTheme {
     /// Stroke widths from DESIGN.md.
     static let ringStrokePhone: CGFloat = 12
     static let ringStrokeWidget: CGFloat = 8
-    /// The track sits at 15 % of the value colour.
-    static let trackOpacity: Double = 0.15
+    /// The empty part of a ring is a neutral track, not a tint of the value colour: a dark
+    /// red halo behind a red arc reads as "nearly full" instead of "nearly empty". Its colour
+    /// comes from ``Palette/ringTrack`` so it keeps the same contrast in both schemes.
     /// "Ring animates on value change only, 400 ms ease-out. Nothing else moves."
     static let ringAnimation = Animation.easeOut(duration: 0.4)
 }
@@ -49,19 +50,24 @@ struct Palette {
     let surface: Color
     let textPrimary: Color
     let textSecondary: Color
+    /// The empty part of a ring. Neutral and clearly visible, so a nearly-empty gauge still
+    /// shows the full circle it is emptying out of.
+    let ringTrack: Color
 
     static let dark = Palette(
         background: Color(hex: 0x0B0F14),
         surface: Color(hex: 0x141A22),
         textPrimary: Color(hex: 0xF3F4F6),
-        textSecondary: Color(hex: 0x9AA4B2)
+        textSecondary: Color(hex: 0x9AA4B2),
+        ringTrack: Color(hex: 0x2A3240)
     )
 
     static let light = Palette(
         background: Color(hex: 0xF6F7F9),
         surface: Color(hex: 0xFFFFFF),
         textPrimary: Color(hex: 0x111827),
-        textSecondary: Color(hex: 0x6B7280)
+        textSecondary: Color(hex: 0x6B7280),
+        ringTrack: Color(hex: 0xD8DDE5)
     )
 
     static func of(_ scheme: ColorScheme) -> Palette {
