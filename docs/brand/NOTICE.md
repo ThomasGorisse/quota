@@ -32,5 +32,8 @@ Codex has no hue on purpose: OpenAI's current brand is monochrome (the legacy Ch
 `#10A37F` was retired in the 2025 rebrand), and pure black or pure white is unreadable on
 Quota's own surfaces, so it takes the near-neutral of the theme it sits on.
 
-`gemini.svg` is vendored in its colour form for provenance; the clients draw its single path
-with the gradient above, which is the same mark under the same palette.
+`gemini.svg` is vendored in the colour form it was published in — a blue body under Google's
+four-colour gradients (`#08B962`, `#F94543`, `#FABC12`) — and is kept only as provenance for
+the path. The clients redraw that same single path under the blue → violet → pink sweep in the
+table above: the same geometry, a different palette. Do not read the vendored file's stops as
+the tint to use.

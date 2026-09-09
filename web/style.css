@@ -138,11 +138,13 @@ h1 { font-size: clamp(1.5rem, 2.3vw, 2rem); line-height: 1; letter-spacing: -.05
   .app { padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
   .topbar { gap: 8px 12px; padding-bottom: 12px; flex-wrap: wrap; }
   .brand { gap: 8px; }
-  .status-group { flex: 1 1 100%; min-width: 0; gap: 8px; justify-content: flex-end; flex-wrap: nowrap; }
+  /* Wrap rather than clip: "updated 42 s ago" takes its own line when the pills fill the
+     first one. An ellipsised freshness label is the one label that must never be guessed. */
+  .status-group { flex: 1 1 100%; min-width: 0; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
   .status-pill { padding: 4px 8px; font-size: .75rem; white-space: nowrap; }
   .segmented { margin-right: auto; padding: 1px; }
   .segmented button { padding: 3px 8px; font-size: .75rem; }
-  .updated { font-size: .75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .updated { font-size: .75rem; white-space: nowrap; }
   .providers { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .provider { padding: 12px 16px; }
   .provider-header { min-height: 32px; }

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import json
+import math
 import os
 import re
 import secrets
@@ -276,7 +277,7 @@ def gemini_oauth_clients() -> list[tuple[str, str]]:
         return [(env_id, env_secret)]
 
     ids: list[str] = []
-    secrets: list[str] = []
+    client_secrets: list[str] = []
     scanned = 0
     for root in gemini_cli_roots():
         for path in root.rglob("*.js"):
@@ -290,12 +291,14 @@ def gemini_oauth_clients() -> list[tuple[str, str]]:
             except OSError:
                 continue
             ids.extend(m for m in GOOGLE_CLIENT_ID_RE.findall(text) if m not in ids)
-            secrets.extend(m for m in GOOGLE_CLIENT_SECRET_RE.findall(text) if m not in secrets)
-        if ids and secrets:
+            client_secrets.extend(
+                m for m in GOOGLE_CLIENT_SECRET_RE.findall(text) if m not in client_secrets
+            )
+        if ids and client_secrets:
             break
-    if not ids or not secrets:
+    if not ids or not client_secrets:
         raise GeminiUnavailable("Gemini CLI OAuth client not found")
-    return [(i, s) for i in ids for s in secrets]
+    return [(i, s) for i in ids for s in client_secrets]
 
 
 def gemini_access_token(refresh_token: str) -> str:
@@ -323,26 +326,49 @@ def gemini_access_token(refresh_token: str) -> str:
         if token:
             return token
         last = "no access_token in the response"
-    raise RuntimeError(f"token refresh failed: {last}")
+    # Every candidate was refused: the CLI credential is revoked or expired, which is the
+    # same thing to us as never having signed in. A transient network failure is different
+    # — urlopen raises URLError straight out of the loop and still earns an error card.
+    raise GeminiUnavailable(f"token refresh refused ({last})")
 
 
-def code_assist(endpoint: str, access_token: str) -> Any:
-    return post_json(
-        f"{CODE_ASSIST_HOST}/v1internal:{endpoint}",
-        {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
-        b"{}",
-    )
+def code_assist(endpoint: str, access_token: str, body: dict[str, Any] | None = None) -> Any:
+    """A Code Assist call. 401/403 means this account has no Code Assist: skip, don't shout."""
+    try:
+        return post_json(
+            f"{CODE_ASSIST_HOST}/v1internal:{endpoint}",
+            {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
+            json.dumps(body or {}).encode(),
+        )
+    except urllib.error.HTTPError as error:
+        if error.code in (401, 403):
+            raise GeminiUnavailable(f"Code Assist refused the credential (HTTP {error.code})") from error
+        raise
 
 
 GEMINI_TIER_NAMES = {"FREE": "Free", "STANDARD": "Standard", "ENTERPRISE": "Enterprise"}
 
 
-def gemini_plan(access_token: str) -> str | None:
-    """`currentTier.id` from loadCodeAssist. Best effort: a tier is not worth a red card."""
+def gemini_onboarding(access_token: str) -> dict[str, Any]:
+    """loadCodeAssist, called once: it carries both the tier and the project id.
+
+    Best effort — a malformed answer costs a plan label and a project hint, not the run.
+    A 401/403 is not swallowed here: it means the account has no Code Assist at all, and
+    `collect_gemini` must skip the provider rather than draw an empty card.
+    """
     try:
-        tier = (code_assist("loadCodeAssist", access_token).get("currentTier") or {}).get("id")
+        data = code_assist("loadCodeAssist", access_token)
+    except GeminiUnavailable:
+        raise
     except Exception:  # noqa: BLE001 - the quota buckets are the payload that matters
-        return None
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def gemini_plan(onboarding: dict[str, Any]) -> str | None:
+    """`currentTier.id` from loadCodeAssist. Best effort: a tier is not worth a red card."""
+    tier_block = onboarding.get("currentTier")
+    tier = tier_block.get("id") if isinstance(tier_block, dict) else None
     if not isinstance(tier, str) or not tier:
         return None
     return GEMINI_TIER_NAMES.get(tier.upper(), tier.replace("_", " ").title())
@@ -373,33 +399,56 @@ def collect_gemini() -> dict[str, Any]:
         credentials = json.loads(GEMINI_CREDS_PATH.read_text())
     except FileNotFoundError as error:
         raise GeminiUnavailable("Gemini CLI not signed in") from error
+    except OSError as error:  # unreadable: a credential we cannot use is one we do not have
+        raise GeminiUnavailable(f"Gemini credential unreadable ({error.strerror})") from error
+    except json.JSONDecodeError as error:
+        raise GeminiUnavailable("Gemini credential is not valid JSON") from error
+    if not isinstance(credentials, dict):
+        raise GeminiUnavailable("Gemini credential is not a JSON object")
     refresh_token = credentials.get("refresh_token")
-    if not refresh_token:
+    if not isinstance(refresh_token, str) or not refresh_token:
         raise GeminiUnavailable("no refresh_token in the Gemini credential")
 
+    # The stored access_token is deliberately ignored: it is minutes-lived, and writing a
+    # refreshed one back would race the Gemini CLI for its own file. One refresh per run.
     access_token = gemini_access_token(refresh_token)
-    buckets = code_assist("retrieveUserQuota", access_token).get("buckets") or []
+    onboarding = gemini_onboarding(access_token)
+    # Code Assist meters quota per project; `retrieveUserQuota` wants the one loadCodeAssist
+    # just handed back. Sending none is only right for an account that has no project.
+    project = onboarding.get("cloudaicompanionProject")
+    request = {"cloudaicompanionProject": project} if isinstance(project, str) and project else {}
+    payload = code_assist("retrieveUserQuota", access_token, request)
+    buckets = payload.get("buckets") if isinstance(payload, dict) else None
 
     windows = []
-    for bucket in buckets:
+    for bucket in buckets or []:
         if not isinstance(bucket, dict):
             continue
         fraction = bucket.get("remainingFraction")
-        if not isinstance(fraction, (int, float)):
+        # `isinstance(True, int)` is True, and NaN survives every comparison: exclude both.
+        if isinstance(fraction, bool) or not isinstance(fraction, (int, float)):
             continue
+        fraction = float(fraction)
+        if not math.isfinite(fraction):
+            continue
+        fraction = min(1.0, max(0.0, fraction))  # a ring cannot go past either end
         model_id = str(bucket.get("modelId") or "quota")
         windows.append(
             {
                 "id": gemini_window_id(model_id),
                 "label": gemini_window_label(model_id),
-                "percent": round((1 - float(fraction)) * 100),
+                # One decimal, like Claude and Codex: the clients round for display.
+                "percent": round((1 - fraction) * 100, 1),
                 "resets_at": normalize_iso(bucket.get("resetTime")),
             }
         )
     # Most consumed first: that bucket is the headline every one-ring surface shows.
     windows.sort(key=lambda w: -w["percent"])
+    if not windows:
+        # A card with no ring is worse than no card: the docstring on `collect` is the rule.
+        raise GeminiUnavailable("Code Assist reported no quota bucket")
     return {
-        "plan": gemini_plan(access_token),
+        "plan": gemini_plan(onboarding),
         "windows": windows[:GEMINI_MAX_WINDOWS],
         "extra": {"buckets": len(windows)},
     }
@@ -432,8 +481,10 @@ def collect() -> dict[str, Any]:
     for name, collector in (("claude", collect_claude), ("codex", collect_codex), ("gemini", collect_gemini)):
         try:
             providers[name] = collector()
-        except GeminiUnavailable as reason:
-            log(f"{name}: skipped ({reason})")
+        except GeminiUnavailable:
+            # Never set up on this Mac: no card, and no line in a log that runs every
+            # few minutes forever. `summary()` already says which providers were read.
+            pass
         except Exception as error:  # noqa: BLE001 - a partial report beats no report
             reason = describe(error)
             log(f"{name}: {reason}")
