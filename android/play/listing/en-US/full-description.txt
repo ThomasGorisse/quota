@@ -1,0 +1,38 @@
+Quota shows how much of your Claude and Codex usage limits is left, as a ring on your home
+screen. One glance, no app to open.
+
+You run the collector on your own machine. It reads the usage figures that Claude Code and
+the Codex CLI already write locally, and serves them to this app over your own network. The
+app pairs with it once, by scanning a QR code, and then just displays what the collector
+reports.
+
+WHAT YOU SEE
+
+• A ring per provider, showing what is REMAINING, not what is spent — the number you
+  actually want is the one that is left.
+• The time the limit resets, in plain words: "resets in 2 h 10".
+• Colour that means one thing everywhere: green while there is room, amber when the window
+  is getting tight, red when it is nearly gone, grey when the data is stale.
+• Home screen widgets in two sizes, so the answer is on your wallpaper.
+
+WHAT IT NEEDS
+
+Quota is not useful on its own. It is the display for a collector you run yourself, so you
+need a machine on your network running it. The pairing screen explains the setup, and the
+project README covers it in full.
+
+NO ACCOUNT, NOTHING COLLECTED
+
+• No sign-up, no account, no email.
+• The app talks to your collector and to nothing else. There is no server of ours.
+• No analytics, no advertising identifier, no crash-reporting SDK, no third-party tracker.
+• The pairing secret is held in Android's encrypted storage on your device, and never
+  leaves it.
+• Nothing about your usage, your prompts or your projects is transmitted anywhere. We could
+  not read your figures if we wanted to; they never reach us.
+
+Quota is free, open source, and has no in-app purchases. Source, collector and setup:
+github.com/ThomasGorisse/quota
+
+Not affiliated with Anthropic or OpenAI. "Claude" and "Codex" are the names of the tools
+whose local usage files the collector reads.

@@ -5,6 +5,24 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+/**
+ * Upload signing. The four properties live in `~/.gradle/gradle.properties` (or the
+ * environment, for CI), never in this repo — see `docs/release.md`. When any of them is
+ * missing the release build stays unsigned instead of failing, so a fresh clone still
+ * builds `:app:bundleRelease`.
+ */
+fun secret(name: String): String? =
+    (project.findProperty(name) as String?)?.takeIf { it.isNotBlank() }
+        ?: System.getenv(name)?.takeIf { it.isNotBlank() }
+
+val uploadStoreFile = secret("QUOTA_UPLOAD_STORE_FILE")?.let(::File)?.takeIf { it.isFile }
+val uploadStorePassword = secret("QUOTA_UPLOAD_STORE_PASSWORD")
+val uploadKeyAlias = secret("QUOTA_UPLOAD_KEY_ALIAS")
+val uploadKeyPassword = secret("QUOTA_UPLOAD_KEY_PASSWORD")
+val canSignRelease =
+    uploadStoreFile != null && uploadStorePassword != null &&
+        uploadKeyAlias != null && uploadKeyPassword != null
+
 android {
     namespace = "com.gorisse.thomas.quota"
     compileSdk = 36
@@ -13,8 +31,21 @@ android {
         applicationId = "com.gorisse.thomas.quota"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        // Play refuses a versionCode it has already seen; CI passes -PVERSION_CODE=<n>.
+        versionCode = (project.findProperty("VERSION_CODE") as String?)?.toInt() ?: 1
+        // Overridable so a tag build can stamp its own name; 1.0.0 is the real default.
+        versionName = (project.findProperty("VERSION_NAME") as String?) ?: "1.0.0"
+    }
+
+    signingConfigs {
+        if (canSignRelease) {
+            create("release") {
+                storeFile = uploadStoreFile
+                storePassword = uploadStorePassword
+                keyAlias = uploadKeyAlias
+                keyPassword = uploadKeyPassword
+            }
+        }
     }
 
     buildTypes {
@@ -24,6 +55,7 @@ android {
         }
         release {
             buildConfigField("boolean", "DEMO_DATA_AVAILABLE", "false")
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

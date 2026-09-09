@@ -1,0 +1,116 @@
+# Ship the Android app to the Play internal track on an `android-v*` tag.
+#
+#   git tag android-v1.0.0 && git push origin android-v1.0.0
+#
+# Secrets this needs are listed in android/docs/release.md. The job is deliberately the
+# only automated path to Play, and it only ever reaches `internal`: promoting to
+# production stays a click in the console.
+name: Android release
+
+on:
+  push:
+    tags:
+      - "android-v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and verify signing, but do not upload"
+        type: boolean
+        default: true
+
+concurrency:
+  # Play hands out one edit at a time per app; two of these racing lose with
+  # "This Edit has been deleted". Never cancel a run that may already have committed.
+  group: android-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Resolve version
+        id: version
+        run: |
+          # versionName comes from the tag; versionCode is epoch-minutes, which is
+          # monotonic and can never collide with a code Play has already accepted.
+          if [[ "${GITHUB_REF}" == refs/tags/android-v* ]]; then
+            NAME="${GITHUB_REF#refs/tags/android-v}"
+          else
+            NAME="1.0.0-dev.$(git rev-parse --short HEAD)"
+          fi
+          echo "name=$NAME"            >> "$GITHUB_OUTPUT"
+          echo "code=$(( $(date +%s) / 60 ))" >> "$GITHUB_OUTPUT"
+
+      - name: Check the signing secrets are present
+        env:
+          KEYSTORE_BASE64: ${{ secrets.QUOTA_UPLOAD_KEYSTORE_BASE64 }}
+        run: |
+          # Without this the build silently falls back to unsigned and the failure only
+          # shows up as a confusing rejection from Play, minutes later.
+          [[ -n "$KEYSTORE_BASE64" ]] || {
+            echo "::error::QUOTA_UPLOAD_KEYSTORE_BASE64 is empty or unset."; exit 1; }
+
+      - name: Decode the upload keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.QUOTA_UPLOAD_KEYSTORE_BASE64 }}
+        run: printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload-keystore.jks"
+
+      - name: Build the signed bundle
+        env:
+          QUOTA_UPLOAD_STORE_FILE: ${{ runner.temp }}/upload-keystore.jks
+          QUOTA_UPLOAD_STORE_PASSWORD: ${{ secrets.QUOTA_UPLOAD_STORE_PASSWORD }}
+          QUOTA_UPLOAD_KEY_ALIAS: ${{ secrets.QUOTA_UPLOAD_KEY_ALIAS }}
+          QUOTA_UPLOAD_KEY_PASSWORD: ${{ secrets.QUOTA_UPLOAD_KEY_PASSWORD }}
+        run: |
+          ./gradlew :app:bundleRelease \
+            -PVERSION_CODE=${{ steps.version.outputs.code }} \
+            -PVERSION_NAME=${{ steps.version.outputs.name }}
+
+      - name: Verify the bundle is signed
+        run: |
+          AAB=app/build/outputs/bundle/release/app-release.aab
+          unzip -l "$AAB" | grep -qE 'META-INF/.*\.(RSA|DSA|EC)$' \
+            || { echo "::error::the AAB is unsigned"; exit 1; }
+          jarsigner -verify "$AAB" | head -1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-${{ steps.version.outputs.name }}
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+      - name: Upload to the internal track
+        if: startsWith(github.ref, 'refs/tags/android-v') && !inputs.dry_run
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ runner.temp }}/play-sa.json
+          PLAY_SA_CONTENT: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          [[ -n "$PLAY_SA_CONTENT" ]] || {
+            echo "::error::PLAY_SERVICE_ACCOUNT_JSON secret is empty."; exit 1; }
+          printf '%s' "$PLAY_SA_CONTENT" > "$PLAY_SERVICE_ACCOUNT_JSON"
+          python3 scripts/play_upload.py \
+            --aab app/build/outputs/bundle/release/app-release.aab \
+            --package com.gorisse.thomas.quota \
+            --track internal \
+            --version-code ${{ steps.version.outputs.code }} \
+            --release-name "${{ steps.version.outputs.name }}"
+
+      - name: Shred the credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload-keystore.jks" "$RUNNER_TEMP/play-sa.json"

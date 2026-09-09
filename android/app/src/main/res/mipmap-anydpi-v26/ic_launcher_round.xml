@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The launcher mark is generated, not hand-drawn: `android/scripts/generate-play-assets.py`
+  writes both this foreground (mipmap-*/ic_launcher_foreground.png) and the 512 px Play
+  icon from the same geometry, so the store listing and the home screen cannot drift.
+  `monochrome` keeps the vector, which the system tints for themed icons.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
+</adaptive-icon>
