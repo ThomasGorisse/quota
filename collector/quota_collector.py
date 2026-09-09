@@ -237,9 +237,26 @@ def collect() -> dict[str, Any]:
     return {"collected_at": iso(datetime.now(timezone.utc)), "providers": providers}
 
 
+FALLBACK_WORKER_URL = "https://quota.mcp-tools-lab.workers.dev"
+
+
 def send(config: dict[str, Any], snapshot: dict[str, Any]) -> None:
+    """POST to the worker; on a DNS failure retry once on the workers.dev host.
+
+    macOS keeps a negative DNS cache for a newly created custom domain long after
+    the record exists, and flushing it needs sudo; the workers.dev name has no such
+    history, so it is the safety net."""
+    try:
+        _post(config["worker_url"], config, snapshot)
+    except urllib.error.URLError as error:
+        if "nodename nor servname" not in str(error.reason) or config["worker_url"].startswith(FALLBACK_WORKER_URL):
+            raise
+        _post(FALLBACK_WORKER_URL, config, snapshot)
+
+
+def _post(base_url: str, config: dict[str, Any], snapshot: dict[str, Any]) -> None:
     request = urllib.request.Request(
-        f"{config['worker_url'].rstrip('/')}/v1/ingest",
+        f"{base_url.rstrip('/')}/v1/ingest",
         data=json.dumps(snapshot).encode(),
         headers={
             "Authorization": f"Bearer {config['token']}",
