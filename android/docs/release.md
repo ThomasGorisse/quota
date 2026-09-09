@@ -123,8 +123,15 @@ In order:
    *View app information* and *Release to testing tracks*. Until this is done every API
    call returns 403, and `sync-play.sh` says so explicitly.
 5. Fill the store listing from `android/play/` (below), plus content rating and the data
-   safety form. Data safety is short and true: no data collected, no data shared, no
-   analytics, no crash SDK; the app talks only to the collector the user runs.
+   safety form. Data safety must match the flow, which is not "nothing leaves the
+   device": the collector sends a percentage per provider and a reset time to the relay
+   at `quota.sceneview.dev`, keyed by a random pairing identifier, and the app reads them
+   back with a pairing token. Declare that as app activity / other in-app actions,
+   transferred and not linked to an identity — no prompts, no file contents, no token
+   counts, no account identifiers, and nothing that names the user or the machine. No
+   analytics, no advertising ID, no crash SDK, no third-party tracker. The pairing token
+   lives in Android's encrypted storage. Answer "yes" to data in transit encryption and
+   to deletion on request: unpairing drops it.
 
 After that, `sync-play.sh` and the tag workflow both work unattended for the internal track.
 
@@ -136,8 +143,8 @@ After that, `sync-play.sh` and the tag workflow both work unattended for the int
 play/
   listing/en-US/
     title.txt              "Quota — AI usage at a glance"   (28 / 30 chars)
-    short-description.txt                                    (75 / 80)
-    full-description.txt                                     (1 833 / 4 000)
+    short-description.txt                                    (78 / 80)
+    full-description.txt                                     (2 467 / 4 000)
     icon.png               512x512
     feature-graphic.png    1024x500
   screenshots/phone/

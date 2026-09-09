@@ -2,14 +2,16 @@ Quota shows how much of your Claude and Codex usage limits is left, as a ring on
 screen. One glance, no app to open.
 
 You run the collector on your own machine. It reads the usage figures that Claude Code and
-the Codex CLI already write locally, and serves them to this app over your own network. The
-app pairs with it once, by scanning a QR code, and then just displays what the collector
-reports.
+the Codex CLI already write locally, works out a percentage, and sends that percentage to a
+small relay at quota.sceneview.dev. This app pairs with the relay once, by scanning a QR
+code, and reads your figures back using that pairing token. Only percentages and reset times
+travel: no prompts, no file contents, no token counts, no account identifiers.
 
 WHAT YOU SEE
 
-• A ring per provider, showing what is REMAINING, not what is spent — the number you
-  actually want is the one that is left.
+• A ring per provider. By default it shows what is REMAINING — the number you usually want
+  is the one that is left — but you can switch it to show what is USED instead. The choice
+  is made once and syncs everywhere: phone, widgets and web all follow it.
 • The time the limit resets, in plain words: "resets in 2 h 10".
 • Colour that means one thing everywhere: green while there is room, amber when the window
   is getting tight, red when it is nearly gone, grey when the data is stale.
@@ -18,21 +20,26 @@ WHAT YOU SEE
 WHAT IT NEEDS
 
 Quota is not useful on its own. It is the display for a collector you run yourself, so you
-need a machine on your network running it. The pairing screen explains the setup, and the
-project README covers it in full.
+need a machine running it. The pairing screen explains the setup, and the project README
+covers it in full.
 
-NO ACCOUNT, NOTHING COLLECTED
+NO ACCOUNT, AND ALMOST NOTHING LEAVES YOUR MACHINE
 
-• No sign-up, no account, no email.
-• The app talks to your collector and to nothing else. There is no server of ours.
+• No sign-up, no account, no email address.
+• What the relay holds is a percentage per provider and a reset time, against a random
+  pairing identifier. That is the whole payload.
+• What it never receives: your prompts, your code, your projects, your file names, your
+  token counts, your Claude or OpenAI credentials, and anything identifying you or your
+  machine. The collector does not read them and the app could not display them.
 • No analytics, no advertising identifier, no crash-reporting SDK, no third-party tracker.
-• The pairing secret is held in Android's encrypted storage on your device, and never
-  leaves it.
-• Nothing about your usage, your prompts or your projects is transmitted anywhere. We could
-  not read your figures if we wanted to; they never reach us.
+• The pairing token is held in Android's encrypted storage on your device.
+• Unpair at any time and the relay drops the data.
 
-Quota is free, open source, and has no in-app purchases. Source, collector and setup:
-github.com/ThomasGorisse/quota
+Quota is free, open source, and has no in-app purchases. If you would rather nothing left
+your machine at all, the collector and relay are both in the repository and you can point
+the app at your own.
+
+Source, collector and setup: github.com/ThomasGorisse/quota
 
 Not affiliated with Anthropic or OpenAI. "Claude" and "Codex" are the names of the tools
 whose local usage files the collector reads.

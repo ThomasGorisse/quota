@@ -1,1 +1,1 @@
-See what is left of your Claude and Codex rate limits, on your home screen.
+Claude and Codex limits on your home screen: what's left, or what you've used.
