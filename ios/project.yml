@@ -1,0 +1,165 @@
+name: Quota
+options:
+  bundleIdPrefix: com.gorisse.thomas
+  deploymentTarget:
+    iOS: "17.0"
+    watchOS: "10.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: targeted
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    GCC_WARN_ABOUT_RETURN_TYPE: YES
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+    # No third-party code, so nothing to link but the system frameworks.
+    ALWAYS_SEARCH_USER_PATHS: NO
+
+# Shared sources are compiled into every target rather than shipped as a framework: four small
+# targets, one copy of the contract, and no embedded binary to sign.
+targetTemplates:
+  QuotaTarget:
+    sources:
+      - path: Sources/Shared
+      - path: Resources/Shared/Brand.xcassets
+        buildPhase: resources
+
+targets:
+
+  Quota:
+    type: application
+    platform: iOS
+    templates: [QuotaTarget]
+    sources:
+      - path: Sources/App
+      - path: Resources/App/Assets.xcassets
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gorisse.thomas.quota
+        PRODUCT_NAME: Quota
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_ENTITLEMENTS: Support/Quota.entitlements
+    info:
+      path: Support/Quota-Info.plist
+      properties:
+        CFBundleDisplayName: Quota
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        LSRequiresIPhoneOS: true
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.gorisse.thomas.quota.refresh
+        NSCameraUsageDescription: "Scanning the pairing QR the collector prints. The camera is used for nothing else and no image is stored."
+    dependencies:
+      - target: QuotaWidgets
+      - target: QuotaWatch
+        embed: true
+        copy:
+          destination: productsDirectory
+          subpath: $(CONTENTS_FOLDER_PATH)/Watch
+
+  QuotaWidgets:
+    type: app-extension
+    platform: iOS
+    templates: [QuotaTarget]
+    sources:
+      - path: Sources/Widgets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gorisse.thomas.quota.widgets
+        PRODUCT_NAME: QuotaWidgets
+        CODE_SIGN_ENTITLEMENTS: Support/QuotaWidgets.entitlements
+        SKIP_INSTALL: YES
+    info:
+      path: Support/QuotaWidgets-Info.plist
+      properties:
+        CFBundleDisplayName: Quota
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+
+  QuotaWatch:
+    type: application
+    platform: watchOS
+    templates: [QuotaTarget]
+    sources:
+      - path: Sources/Watch
+      - path: Resources/Watch/Assets.xcassets
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gorisse.thomas.quota.watchkitapp
+        PRODUCT_NAME: Quota
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_ENTITLEMENTS: Support/QuotaWatch.entitlements
+        SKIP_INSTALL: YES
+    info:
+      path: Support/QuotaWatch-Info.plist
+      properties:
+        CFBundleDisplayName: Quota
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.gorisse.thomas.quota
+        WKRunsIndependentlyOfCompanionApp: true
+    dependencies:
+      - target: QuotaWatchWidgets
+        embed: true
+
+  QuotaWatchWidgets:
+    type: app-extension
+    platform: watchOS
+    templates: [QuotaTarget]
+    sources:
+      - path: Sources/WatchWidgets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gorisse.thomas.quota.watchkitapp.widgets
+        PRODUCT_NAME: QuotaWatchWidgets
+        CODE_SIGN_ENTITLEMENTS: Support/QuotaWatchWidgets.entitlements
+        SKIP_INSTALL: YES
+    info:
+      path: Support/QuotaWatchWidgets-Info.plist
+      properties:
+        CFBundleDisplayName: Quota
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+
+schemes:
+  Quota:
+    build:
+      targets:
+        Quota: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+  QuotaWatch:
+    build:
+      targets:
+        QuotaWatch: all
+    run:
+      config: Debug
