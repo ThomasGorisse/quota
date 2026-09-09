@@ -10,6 +10,13 @@
   --warn: #F59E0B;
   --critical: #EF4444;
   --stale: #6B7280;
+  /* Provider accents. Anthropic keeps its orange; OpenAI is monochrome since the 2025
+     rebrand (pure black would vanish here, so the dark theme takes their near-white);
+     Gemini has no single flat tint — #8E75B2 is the fallback for anything that cannot
+     draw the blue → violet → pink sweep. */
+  --accent-claude: #D97757;
+  --accent-codex: #ECECEC;
+  --accent-gemini: #8E75B2;
   --pad: clamp(16px, 2.5vw, 48px);
   font: 400 16px/1.4 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-variant-numeric: tabular-nums;
@@ -41,13 +48,17 @@ h1 { font-size: clamp(1.5rem, 2.3vw, 2rem); line-height: 1; letter-spacing: -.05
 .demo-badge { color: var(--muted); font-size: .8125rem; }
 .demo-badge { border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; }
 .dashboard { display: flex; flex-direction: column; flex: 1; gap: 16px; }
-.providers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(16px, 2vw, 32px); flex: 1; }
-.provider { --accent: #D97757; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: clamp(16px, 1.5vw, 32px); display: flex; flex-direction: column; position: relative; container-type: inline-size; }
-.provider[data-provider="codex"] { --accent: #10A37F; }
+.providers { display: grid; grid-template-columns: repeat(var(--providers, 2), minmax(0, 1fr)); gap: clamp(16px, 2vw, 32px); flex: 1; }
+.provider { --accent: var(--accent-claude); min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: clamp(16px, 1.5vw, 32px); display: flex; flex-direction: column; position: relative; container-type: inline-size; }
+.provider[data-provider="codex"] { --accent: var(--accent-codex); }
+.provider[data-provider="gemini"] { --accent: var(--accent-gemini); }
 .provider-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .provider-identity { display: flex; align-items: center; gap: 12px; }
 .provider-icon { width: clamp(32px, 3vw, 48px); aspect-ratio: 1; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); border-radius: 12px; }
 .provider-icon svg { width: 58%; height: 58%; fill: currentColor; }
+/* The Gemini mark carries its own gradient, so its tile takes the same sweep rather than
+   a flat wash of one accent. */
+.provider[data-provider="gemini"] .provider-icon { background: conic-gradient(from 210deg, #4285F42E, #9B72CB2E, #D965702E, #4285F42E); }
 .provider h2 { margin: 0; font-size: clamp(1.25rem, 2vw, 1.875rem); font-weight: 600; letter-spacing: -.035em; }
 .provider-subtitle { color: var(--muted); font-size: .75rem; }
 .plan { color: var(--muted); font-size: .8125rem; border: 1px solid var(--border); padding: 4px 10px; border-radius: 12px; }
@@ -102,7 +113,7 @@ h1 { font-size: clamp(1.5rem, 2.3vw, 2rem); line-height: 1; letter-spacing: -.05
 .demo-link { display: block; margin-top: 24px; color: var(--muted); font-size: .875rem; text-decoration: none; text-align: center; }
 .demo-link:hover { color: var(--text); }
 @media (prefers-color-scheme: light) {
-  :root { --bg: #F6F7F9; --surface: #FFFFFF; --text: #111827; --muted: #596273; --track: #C1C8D2; --border: #11182714; }
+  :root { --bg: #F6F7F9; --surface: #FFFFFF; --text: #111827; --muted: #596273; --track: #C1C8D2; --border: #11182714; --accent-codex: #0D0D0D; }
   .status-pill { color: var(--text); }
   .status-pill::before { background: var(--severity); }
 }
@@ -113,6 +124,10 @@ h1 { font-size: clamp(1.5rem, 2.3vw, 2rem); line-height: 1; letter-spacing: -.05
   .provider-subtitle { display: none; }
   .gauges { padding: 8px 0 0; }
   .meter { width: min(100%, 21vh); }
+  /* A third stacked card has to come out of the rings, or the board scrolls. */
+  [data-providers="3"] .provider { padding: 12px 24px; }
+  [data-providers="3"] .meter { width: min(100%, 14vh); }
+  [data-providers="3"] .show-history .meter { width: min(100%, 11vh); }
   .gauge-label { margin-bottom: 4px; }
   .reset { margin-top: 4px; }
   .show-history .meter { width: min(100%, 17vh); }
@@ -123,11 +138,13 @@ h1 { font-size: clamp(1.5rem, 2.3vw, 2rem); line-height: 1; letter-spacing: -.05
   .app { padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
   .topbar { gap: 8px 12px; padding-bottom: 12px; flex-wrap: wrap; }
   .brand { gap: 8px; }
-  .status-group { flex: 1 1 100%; min-width: 0; gap: 8px; justify-content: flex-end; flex-wrap: nowrap; }
+  /* Wrap rather than clip: "updated 42 s ago" takes its own line when the pills fill the
+     first one. An ellipsised freshness label is the one label that must never be guessed. */
+  .status-group { flex: 1 1 100%; min-width: 0; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
   .status-pill { padding: 4px 8px; font-size: .75rem; white-space: nowrap; }
   .segmented { margin-right: auto; padding: 1px; }
   .segmented button { padding: 3px 8px; font-size: .75rem; }
-  .updated { font-size: .75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .updated { font-size: .75rem; white-space: nowrap; }
   .providers { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .provider { padding: 12px 16px; }
   .provider-header { min-height: 32px; }
@@ -137,10 +154,20 @@ h1 { font-size: clamp(1.5rem, 2.3vw, 2rem); line-height: 1; letter-spacing: -.05
   .provider[data-windows="3"] .gauge[data-window="reserve"] { grid-column: 1 / -1; }
   .meter { width: min(100%, 18svh); }
   .provider[data-windows="3"] .meter { width: min(100%, 14svh); }
+  /* Three cards on a phone: the rings shrink so the whole board still fits one screen. */
+  [data-providers="3"] .providers { gap: 8px; }
+  [data-providers="3"] .provider { padding: 8px 14px; }
+  [data-providers="3"] .gauges { padding: 6px 0 0; }
+  [data-providers="3"] .meter { width: min(100%, 10svh); }
+  [data-providers="3"] .provider[data-windows="3"] .meter { width: min(100%, 9svh); }
+  [data-providers="3"] .gauge-label { font-size: 15px; }
+  [data-providers="3"] .reset { font-size: 12px; }
   .gauge-label { font-size: 16px; margin-bottom: 4px; }
   .reset { font-size: 14px; margin-top: 4px; }
   .show-history .meter { width: min(100%, 15svh); }
   .show-history .provider[data-windows="3"] .meter { width: min(100%, 11svh); }
+  [data-providers="3"].show-history .meter { width: min(100%, 9svh); }
+  [data-providers="3"].show-history .provider[data-windows="3"] .meter { width: min(100%, 8svh); }
   .history { padding-top: 8px; margin-top: 8px; display: flex; align-items: center; gap: 16px; }
   .history-heading { display: block; flex: 0 0 auto; }
   .history-legend { display: none; }

@@ -25,7 +25,21 @@ object QuotaColors {
     val Stale = Color(0xFF6B7280)
 
     val Claude = Color(0xFFD97757)
-    val Codex = Color(0xFF10A37F)
+
+    /**
+     * OpenAI retired the ChatGPT green in its 2025 rebrand and is monochrome now. Their black
+     * would vanish on [BackgroundDark], so each theme takes its own end of the pair.
+     */
+    val CodexDark = Color(0xFFECECEC)
+    val CodexLight = Color(0xFF0D0D0D)
+
+    /** The Gemini mark is a blue → violet → pink sweep, drawn as one wherever it is cheap. */
+    val GeminiStart = Color(0xFF4285F4)
+    val GeminiMid = Color(0xFF9B72CB)
+    val GeminiEnd = Color(0xFFD96570)
+
+    /** The flat fallback, for a history stroke or anything else that takes one colour. */
+    val Gemini = Color(0xFF8E75B2)
 
     /**
      * Ring track. It used to be the value colour at 15 % opacity, which left the empty part
@@ -58,10 +72,33 @@ val Severity.color: Color
 /** The same severity colour for the widget, which draws with `android.graphics.Paint`. */
 val Severity.argb: Int get() = color.toArgb()
 
-val ProviderId.accent: Color
-    get() = when (this) {
-        ProviderId.CLAUDE -> QuotaColors.Claude
-        ProviderId.CODEX -> QuotaColors.Codex
+/** The provider accent for one theme. Only Codex differs between the two. */
+fun ProviderId.accent(dark: Boolean): Color = when (this) {
+    ProviderId.CLAUDE -> QuotaColors.Claude
+    ProviderId.CODEX -> if (dark) QuotaColors.CodexDark else QuotaColors.CodexLight
+    ProviderId.GEMINI -> QuotaColors.Gemini
+}
+
+@androidx.compose.runtime.Composable
+fun ProviderId.accent(): Color = accent(androidx.compose.foundation.isSystemInDarkTheme())
+
+/**
+ * What fills the mark's rounded square: one flat tint, except Gemini, whose brand is the
+ * sweep itself — the same choice the web dashboard makes with a conic gradient.
+ */
+@androidx.compose.runtime.Composable
+fun ProviderId.accentBrush(alpha: Float): androidx.compose.ui.graphics.Brush =
+    if (this == ProviderId.GEMINI) {
+        androidx.compose.ui.graphics.Brush.sweepGradient(
+            listOf(
+                QuotaColors.GeminiStart.copy(alpha = alpha),
+                QuotaColors.GeminiMid.copy(alpha = alpha),
+                QuotaColors.GeminiEnd.copy(alpha = alpha),
+                QuotaColors.GeminiStart.copy(alpha = alpha),
+            ),
+        )
+    } else {
+        androidx.compose.ui.graphics.SolidColor(accent().copy(alpha = alpha))
     }
 
 /** Keep the semantic hues, with accessible text contrast on white. */

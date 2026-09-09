@@ -84,28 +84,43 @@ struct WidgetProviderGroup: View {
 // MARK: - Home screen
 
 /// Small: one ring per provider — its headline window, the 5 h one when the provider reports
-/// one and its shortest otherwise.
+/// one and its shortest otherwise. Past two providers a small tile can only hold the
+/// headline: three 54 pt rings on a 158 pt tile print numbers nobody reads at arm's length.
 struct QuotaSmallView: View {
     let snapshot: Snapshot
     var now: Date = Date()
 
     @Environment(\.palette) private var palette
 
+    private var reported: [ProviderId] {
+        ProviderId.allCases.filter { snapshot.headlineWindow($0) != nil }
+    }
+
+    /// The providers this tile draws: all of them while there are two, the one closest to
+    /// its limit once there are more.
+    private var shown: [ProviderId] {
+        guard reported.count > 2 else { return reported }
+        return reported
+            .max { (snapshot.headlineWindow($0)?.percent ?? -1) < (snapshot.headlineWindow($1)?.percent ?? -1) }
+            .map { [$0] } ?? reported
+    }
+
     var body: some View {
         let stale = snapshot.isStale(now: now)
         let mode = snapshot.display
+        let diameter: CGFloat = shown.count == 1 ? 84 : 54
         VStack(alignment: .leading, spacing: 8) {
             WidgetHeader(snapshot: snapshot, now: now)
             Spacer(minLength: 0)
             HStack(spacing: 10) {
-                ForEach(ProviderId.allCases, id: \.self) { id in
+                ForEach(shown, id: \.self) { id in
                     if let window = snapshot.headlineWindow(id) {
                         VStack(spacing: 3) {
                             RingGauge(
                                 value: window.value(mode),
                                 severity: stale ? .stale : window.severity,
                                 mode: mode,
-                                diameter: 54,
+                                diameter: diameter,
                                 stroke: QuotaTheme.ringStrokeWidget,
                                 showsCaption: false
                             )
@@ -137,12 +152,17 @@ struct QuotaSmallView: View {
 /// Five rings fit on a 364 pt tile only in a screenshot — at the tile's real size each number
 /// lands around 6 pt of type. So each provider keeps the two windows that matter
 /// (``ProviderStatus/primaryWindows(limit:)``) and the rings grow to fill the space freed.
+/// With three providers the same arithmetic allows one ring each: three headlines, not six
+/// numbers too small to read.
 struct QuotaMediumView: View {
     let snapshot: Snapshot
     var now: Date = Date()
 
-    /// Two providers, two rings each, on one 364 x 170 tile.
-    private var ringDiameter: CGFloat { 66 }
+    private var providerCount: Int { snapshot.orderedProviders().count }
+    private var windowsPerProvider: Int { providerCount > 2 ? 1 : 2 }
+
+    /// Two providers, two rings each, on one 364 x 170 tile; three providers, one each.
+    private var ringDiameter: CGFloat { providerCount > 2 ? 72 : 66 }
 
     var body: some View {
         let stale = snapshot.isStale(now: now)
@@ -150,11 +170,11 @@ struct QuotaMediumView: View {
         VStack(alignment: .leading, spacing: 4) {
             WidgetHeader(snapshot: snapshot, now: now)
             Spacer(minLength: 0)
-            HStack(alignment: .top, spacing: 26) {
+            HStack(alignment: .top, spacing: providerCount > 2 ? 18 : 26) {
                 ForEach(snapshot.orderedProviders(), id: \.name) { entry in
                     WidgetProviderGroup(
                         name: entry.name,
-                        windows: entry.provider.primaryWindows(limit: 2),
+                        windows: entry.provider.primaryWindows(limit: windowsPerProvider),
                         mode: mode,
                         stale: stale,
                         diameter: ringDiameter,
@@ -211,7 +231,7 @@ struct QuotaCircularView: View {
     }
 }
 
-/// Rectangular: one line per provider, "Claude 89% · 2h09" and "Codex 8% · 36m".
+/// Rectangular: one line per reporting provider, "Claude 89% · 2h09", "Codex 8% · 36m".
 struct QuotaRectangularView: View {
     let snapshot: Snapshot
     var now: Date = Date()

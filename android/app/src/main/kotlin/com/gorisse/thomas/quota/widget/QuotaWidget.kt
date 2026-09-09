@@ -33,7 +33,6 @@ import androidx.glance.layout.size
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
 import com.gorisse.thomas.quota.MainActivity
 import com.gorisse.thomas.quota.R
 import com.gorisse.thomas.quota.data.DisplayMode
@@ -50,8 +49,8 @@ import com.gorisse.thomas.quota.ui.theme.accent
 import com.gorisse.thomas.quota.ui.theme.argb
 
 /**
- * Two layouts, chosen by cell size: 2×1 shows the two 5 h rings, 4×2 shows every window with
- * its label. The widget never fetches — [RefreshWorker] does, then calls `updateAll`.
+ * Two layouts, chosen by cell size: 2×1 shows the headline rings, 4×2 shows every window
+ * with its label. The widget never fetches — [RefreshWorker] does, then calls `updateAll`.
  */
 class QuotaWidget : GlanceAppWidget() {
 
@@ -120,12 +119,13 @@ private fun SmallContent(snapshot: Snapshot, mode: DisplayMode) {
     val stale = snapshot.isStale()
     val size = LocalSize.current
     val height = size.height.value
-    // The card takes 4 dp a side, each half then takes 6 dp a side (see the Row below).
-    val perHalf = size.width.value / 2 - 4 - 2 * 6
-    val diameter = minOf(height - 30, perHalf - SMALL_MARK_DP - SMALL_GAP_DP).toInt()
+    val shown = snapshot.smallProviders()
+    // The card takes 4 dp a side, each share then takes 6 dp a side (see the Row below).
+    val perShare = size.width.value / shown.size - 4 - 2 * 6
+    val diameter = minOf(height - 30, perShare - SMALL_MARK_DP - SMALL_GAP_DP).toInt()
     val ringFits = height >= 56 && diameter >= 30
     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
-        ProviderId.entries.forEach { id ->
+        shown.forEach { id ->
             val window = snapshot.status.providers[id.key]?.sessionWindow()
             Row(
                 // Without this the second provider's mark sits closer to the first
@@ -138,6 +138,16 @@ private fun SmallContent(snapshot: Snapshot, mode: DisplayMode) {
                     ProviderMark(id, sizeDp = SMALL_MARK_DP)
                     Spacer(GlanceModifier.size(SMALL_GAP_DP.dp))
                     MiniRing(window, stale, diameterDp = diameter.coerceAtMost(48), mode = mode)
+                    if (shown.size == 1) {
+                        // Alone in the cell, the headline can afford to name itself.
+                        Spacer(GlanceModifier.size(SMALL_GAP_DP.dp))
+                        Text(
+                            id.displayName,
+                            style = TextStyle(color = primaryText(), fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium),
+                            maxLines = 1,
+                        )
+                    }
                 } else {
                     // Too tight for a ring at all: the mark and the number, nothing else.
                     ProviderMark(id, sizeDp = 14)
@@ -159,12 +169,17 @@ private fun LargeContent(snapshot: Snapshot, mode: DisplayMode) {
     val stale = snapshot.isStale()
     // Two rings per provider at most: five rings on a 7 cm cell rendered ~6sp values.
     val columns = snapshot.orderedProviders().maxOfOrNull { (_, p) -> p.widgetWindows(2).size } ?: 1
+    // Three providers share the same cell as two did, so the width has to be divided by the
+    // number of columns actually drawn — otherwise the third one's rings overflow their share.
+    val providers = snapshot.orderedProviders().size.coerceAtLeast(1)
     // The cell also has to fit a header, a provider name, a label, a reset time and the
     // footer: give the ring what is left, not what the width alone would allow.
     val diameter = minOf(
-        (LocalSize.current.width.value - 56) / (columns * 2),
+        (LocalSize.current.width.value - 24 - 8 * providers) / (providers * columns) - 4,
         LocalSize.current.height.value - 100,
-    ).toInt().coerceIn(36, 58)
+    ).toInt().coerceIn(28, 58)
+    // Three columns cannot also carry the plan chip: the provider name alone has to fit.
+    val roomy = providers <= 2
     Column(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.Vertical.CenterVertically) {
         Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
             Text("Quota", style = TextStyle(color = primaryText(), fontSize = 14.sp, fontWeight = FontWeight.Bold))
@@ -185,8 +200,9 @@ private fun LargeContent(snapshot: Snapshot, mode: DisplayMode) {
                     Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
                         ProviderMark(ProviderId.of(name.lowercase()))
                         Spacer(GlanceModifier.size(5.dp))
-                        Text(name, style = TextStyle(color = primaryText(), fontSize = 13.sp, fontWeight = FontWeight.Bold))
-                        provider.plan?.let {
+                        Text(name, style = TextStyle(color = primaryText(),
+                            fontSize = if (roomy) 13.sp else 12.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                        if (roomy) provider.plan?.let {
                             Text(" · " + it.replaceFirstChar(Char::uppercase),
                                 style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 1)
                         }
@@ -197,10 +213,12 @@ private fun LargeContent(snapshot: Snapshot, mode: DisplayMode) {
                             Column(GlanceModifier.defaultWeight(), horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
                                 MiniRing(window, stale, diameter, mode)
                                 Spacer(GlanceModifier.size(2.dp))
-                                Text(window.label, style = TextStyle(color = primaryText(), fontSize = 12.sp,
+                                Text(window.label, style = TextStyle(color = primaryText(),
+                                    fontSize = if (roomy) 12.sp else 11.sp,
                                     fontWeight = FontWeight.Medium), maxLines = 1)
                                 Text(formatResetsInShort(window.resetsIn()),
-                                    style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 1)
+                                    style = TextStyle(color = secondaryText(),
+                                        fontSize = if (roomy) 11.sp else 10.sp), maxLines = 1)
                             }
                         }
                     }
@@ -284,18 +302,48 @@ private fun MiniRing(window: Window?, stale: Boolean, diameterDp: Int, mode: Dis
     }
 }
 
-/** The real brand mark, tinted with the provider accent — the same one the app shows. */
+/**
+ * The real brand mark, the same one the app shows. Claude and Codex are tinted with their
+ * accent — a day/night pair for Codex, whose brand is monochrome and would otherwise vanish
+ * against one of the two surfaces. The Gemini mark keeps the gradient baked in its drawable.
+ */
 @Composable
 private fun ProviderMark(id: ProviderId?, sizeDp: Int = 14) {
     if (id == null) return
+    if (id == ProviderId.GEMINI) {
+        Image(
+            provider = ImageProvider(R.drawable.ic_brand_gemini),
+            contentDescription = null,
+            modifier = GlanceModifier.size(sizeDp.dp),
+        )
+        return
+    }
     Image(
         provider = ImageProvider(
             if (id == ProviderId.CODEX) R.drawable.ic_brand_openai else R.drawable.ic_brand_claude,
         ),
         contentDescription = null,
-        colorFilter = ColorFilter.tint(ColorProvider(id.accent)),
+        colorFilter = ColorFilter.tint(
+            DayNightColorProvider(day = id.accent(dark = false), night = id.accent(dark = true)),
+        ),
         modifier = GlanceModifier.size(sizeDp.dp),
     )
+}
+
+/**
+ * Which providers a 2 x 1 cell shows. One or two are drawn side by side, as they always
+ * were; a third would leave rings too small to read at arm's length, so the row collapses to
+ * the headline — the provider closest to its limit.
+ */
+private fun Snapshot.smallProviders(): List<ProviderId> {
+    val reported = ProviderId.entries.filter {
+        status.providers[it.key]?.windows.orEmpty().isNotEmpty()
+    }
+    return when {
+        reported.isEmpty() -> listOf(ProviderId.CLAUDE, ProviderId.CODEX)
+        reported.size <= 2 -> reported
+        else -> listOf(reported.maxBy { status.providers[it.key]?.sessionWindow()?.percent ?: -1 })
+    }
 }
 
 private fun Provider.sessionWindow(): Window? = widgetWindows(1).firstOrNull()

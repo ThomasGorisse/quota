@@ -27,10 +27,15 @@ private data class HistoryPoint(val time: Long, val session: Float?, val weekly:
 fun ProviderHistory(
     provider: String, history: List<JsonElement>, stale: Boolean, now: Instant,
     mode: DisplayMode = DisplayMode.REMAINING,
+    /**
+     * The two window ids to plot, primary first. Claude and Codex meter time windows, Gemini
+     * meters models, so the series keys cannot be hardcoded here.
+     */
+    windowIds: List<String> = listOf("session", "weekly"),
 ) {
     val end = now.toEpochMilli()
     val start = end - 86_400_000L
-    val points = remember(provider, history, mode) {
+    val points = remember(provider, history, mode, windowIds) {
         history.mapNotNull { element ->
             val obj = element as? JsonObject ?: return@mapNotNull null
             val time = (obj["t"] as? JsonPrimitive)?.contentOrNull
@@ -39,11 +44,11 @@ fun ProviderHistory(
             fun shown(window: String) = (obj["$provider.$window"] as? JsonPrimitive)
                 ?.floatOrNull?.takeIf { it.isFinite() }
                 ?.let { (if (mode.isUsed) it else 100f - it).coerceIn(0f, 100f) }
-            HistoryPoint(time, shown("session"), shown("weekly"))
+            HistoryPoint(time, windowIds.getOrNull(0)?.let(::shown), windowIds.getOrNull(1)?.let(::shown))
         }.sortedBy { it.time }
     }.filter { it.time in start..end }
     val hasData = points.count { it.session != null } >= 2 || points.count { it.weekly != null } >= 2
-    val accent = if (stale) QuotaColors.Stale else ProviderId.of(provider)?.accent ?: QuotaColors.Stale
+    val accent = if (stale) QuotaColors.Stale else ProviderId.of(provider)?.accent() ?: QuotaColors.Stale
     val line = MaterialTheme.colorScheme.outlineVariant
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         HorizontalDivider(color = line)

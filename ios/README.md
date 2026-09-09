@@ -12,7 +12,7 @@ on the e-ink screen.
 
 | Target | What |
 |---|---|
-| `Quota` | The phone app: pairing, the two provider cards, Settings, `BGAppRefreshTask` |
+| `Quota` | The phone app: pairing, one card per reporting provider, Settings, `BGAppRefreshTask` |
 | `QuotaWidgets` | Home screen small + medium, lock screen circular + rectangular |
 | `QuotaWatch` | watchOS app, every window as a ring in a scrollable view |
 | `QuotaWatchWidgets` | Complications: circular, corner, rectangular, inline |
@@ -47,7 +47,8 @@ watch app, with its own complication extension inside it, in `Quota.app/Watch/`.
 Settings carries a **Demo data** switch. It fills the shared store — and therefore the widgets
 and the watch — with `DemoData`, whose numbers are the same ones the Android build uses and
 deliberately cover the three severities: an ok Claude 5 h, a warn Claude week, a critical Codex
-5 h. Reset times are relative to now, so the "resets in …" line stays worth looking at.
+5 h, and a Gemini pair of model buckets — Gemini only appears once the backend reports it, so
+the demo payload is the one way to see that third card before the credential exists. Reset times are relative to now, so the "resets in …" line stays worth looking at.
 
 Dragging a widget onto the home screen is not scriptable, so **Settings → Preview widgets**
 renders `QuotaMediumView`, `QuotaSmallView`, `QuotaCircularView` and `QuotaRectangularView` at

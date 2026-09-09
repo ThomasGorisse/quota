@@ -94,10 +94,14 @@ enum class Severity(val wire: String) {
     }
 }
 
-/** Display order and labels for the two providers this version knows about. */
+/**
+ * Display order and labels for the providers this version knows about. Gemini only appears
+ * once the worker reports it: an unpaired Gemini CLI is an absent provider, not an empty card.
+ */
 enum class ProviderId(val key: String, val displayName: String) {
     CLAUDE("claude", "Claude"),
-    CODEX("codex", "Codex");
+    CODEX("codex", "Codex"),
+    GEMINI("gemini", "Gemini");
 
     companion object {
         fun of(key: String): ProviderId? = entries.firstOrNull { it.key == key }

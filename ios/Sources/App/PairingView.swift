@@ -18,7 +18,7 @@ struct PairingView: View {
                     Text("Quota")
                         .font(.system(size: 34, weight: .bold))
                         .foregroundStyle(palette.textPrimary)
-                    Text("Claude and Codex limits, on every screen you look at.")
+                    Text("Claude, Codex and Gemini limits, on every screen you look at.")
                         .font(.system(size: 16))
                         .foregroundStyle(palette.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)

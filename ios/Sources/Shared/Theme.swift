@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// The tokens from `docs/DESIGN.md`, and nothing else. Severity has to mean the same green,
 /// amber and red on every surface, so none of these are system or accent colours.
@@ -12,7 +15,26 @@ enum QuotaTheme {
 
     // Provider accents.
     static let claude = Color(hex: 0xD97757)
-    static let codex = Color(hex: 0x10A37F)
+
+    /// OpenAI retired the ChatGPT green in its 2025 rebrand and is monochrome now. Their
+    /// black would vanish on ``Palette/dark``, so the accent follows the scheme.
+    #if os(watchOS)
+    // The watch is always dark: only the near-white half of the pair ever applies.
+    static let codex = Color(hex: 0xECECEC)
+    #else
+    static let codex = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark ? UIColor(Color(hex: 0xECECEC)) : UIColor(Color(hex: 0x0D0D0D))
+    })
+    #endif
+
+    /// The Gemini mark is a blue → violet → pink sweep. ``geminiSweep`` draws it where a
+    /// gradient is cheap; this flat tint is what everything else uses.
+    static let gemini = Color(hex: 0x8E75B2)
+
+    static let geminiSweep = AngularGradient(
+        colors: [Color(hex: 0x4285F4), Color(hex: 0x9B72CB), Color(hex: 0xD96570), Color(hex: 0x4285F4)],
+        center: .center
+    )
 
     static func color(for severity: Severity) -> Color {
         switch severity {
@@ -27,6 +49,7 @@ enum QuotaTheme {
         switch providerName.lowercased() {
         case "claude": return claude
         case "codex": return codex
+        case "gemini": return gemini
         default: return stale
         }
     }

@@ -16,7 +16,7 @@ struct QuotaWatchComplication: Widget {
             QuotaWatchComplicationView(entry: entry)
         }
         .configurationDisplayName("Quota")
-        .description("Claude and Codex limits, at a glance.")
+        .description("Claude, Codex and Gemini limits, at a glance.")
         .supportedFamilies([.accessoryCircular, .accessoryCorner, .accessoryRectangular, .accessoryInline])
     }
 }

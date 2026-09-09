@@ -1,6 +1,6 @@
 # Quota — your AI usage at a glance
 
-Claude and Codex (ChatGPT) rate limits, on every screen you look at: phone widget, web page on
+Claude, Codex (ChatGPT) and Gemini rate limits, on every screen you look at: phone widget, web page on
 any display, e-ink desk device, watch. One collector on the Mac where the sessions live, one
 tiny backend, many thin clients.
 
@@ -19,7 +19,9 @@ tiny backend, many thin clients.
 ```
 Mac (collector, LaunchAgent, every 3 min)
   ├─ Claude:  keychain "Claude Code-credentials" → GET api.anthropic.com/api/oauth/usage
-  └─ Codex:   ~/.codex/auth.json → GET chatgpt.com/backend-api/wham/usage
+  ├─ Codex:   ~/.codex/auth.json → GET chatgpt.com/backend-api/wham/usage
+  └─ Gemini:  ~/.gemini/oauth_creds.json → POST cloudcode-pa.googleapis.com
+              /v1internal:retrieveUserQuota   (absent credential → provider omitted)
         │  POST /v1/ingest  (Bearer <device token>)
         ▼
 Cloudflare Worker + KV  (worker/)
@@ -57,6 +59,14 @@ Tokens never leave the Mac. The backend only ever sees percentages and reset tim
         {"id": "reserve", "label": "Reserve", "percent": 10, "resets_at": "2026-09-13T15:36:54Z"}
       ],
       "extra": {"astra_available": true, "limit_reached": false}
+    },
+    "gemini": {
+      "plan": "Standard",
+      "windows": [
+        {"id": "gemini-3-pro",   "label": "3 Pro",   "percent": 62, "resets_at": "2026-09-09T22:35:00Z"},
+        {"id": "gemini-2-5-pro", "label": "2.5 Pro", "percent": 29, "resets_at": "2026-09-10T07:20:00Z"}
+      ],
+      "extra": {"buckets": 4}
     }
   }
 }
@@ -70,7 +80,7 @@ Tokens never leave the Mac. The backend only ever sees percentages and reset tim
   "providers": { … same as ingest … },
   "severity": "ok | warn | critical",          // worst window: <60 ok, 60–85 warn, >85 critical
   "display": "remaining",                      // how every client prints a percent: "remaining" | "used"
-  "history": [{"t": "…", "claude.session": 11, "claude.weekly": 60, "codex.session": 12, "codex.weekly": 6}]
+  "history": [{"t": "…", "claude.session": 11, "claude.weekly": 60, "codex.session": 12, "gemini.gemini-3-pro": 62}]
 }
 ```
 
