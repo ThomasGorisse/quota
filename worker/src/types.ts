@@ -23,10 +23,14 @@ export interface HistoryPoint {
   [series: string]: string | number;
 }
 
+/** How every client prints a percentage: capacity left, or capacity spent. */
+export type DisplayMode = 'remaining' | 'used';
+
 export interface Settings {
   trmnl_webhook_url?: string | null;
   warn: number;
   critical: number;
+  display: DisplayMode;
 }
 
 export type Severity = 'ok' | 'warn' | 'critical';

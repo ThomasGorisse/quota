@@ -1,4 +1,5 @@
 import type {
+  DisplayMode,
   HistoryPoint,
   Provider,
   Settings,
@@ -16,10 +17,13 @@ export const HISTORY_WINDOW_SECONDS = 24 * 3600;
 /** Points returned by GET /v1/status. */
 export const MAX_STATUS_POINTS = 96;
 
+export const DISPLAY_MODES: readonly DisplayMode[] = ['remaining', 'used'];
+
 export const DEFAULT_SETTINGS: Settings = {
   trmnl_webhook_url: null,
   warn: 60,
   critical: 85,
+  display: 'remaining',
 };
 
 /** Device tokens are 32 random bytes, base64url, unpadded: 43 chars. */
@@ -138,6 +142,8 @@ export interface StatusBody {
   stale: boolean;
   providers: Record<string, Provider>;
   severity: Severity;
+  /** Every client renders the same way; thresholds still run on used percent. */
+  display: DisplayMode;
   history: HistoryPoint[];
 }
 
@@ -154,6 +160,7 @@ export function buildStatus(
     stale: isStale(age),
     providers: snapshot.providers ?? {},
     severity: worstSeverity(snapshot, settings),
+    display: settings.display ?? DEFAULT_SETTINGS.display,
     history: downsample(history ?? []),
   };
 }
@@ -236,9 +243,14 @@ export function normalizeSettings(body: unknown, previous: Settings): Settings {
     const raw = b.trmnl_webhook_url;
     url = typeof raw === 'string' && raw.startsWith('https://') ? raw : null;
   }
+  // An unknown display value is ignored, like an out-of-range threshold.
+  const display = DISPLAY_MODES.includes(b.display as DisplayMode)
+    ? (b.display as DisplayMode)
+    : (previous.display ?? DEFAULT_SETTINGS.display);
   return {
     trmnl_webhook_url: url,
     warn: num(b.warn, previous.warn),
     critical: num(b.critical, previous.critical),
+    display,
   };
 }

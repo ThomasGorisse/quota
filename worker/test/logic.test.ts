@@ -185,6 +185,25 @@ describe('validation', () => {
     expect(s?.providers.claude.extra).toEqual({ error: 'expired token' });
   });
 
+  it('defaults the display mode to remaining and echoes it in the status', () => {
+    expect(DEFAULT_SETTINGS.display).toBe('remaining');
+    expect(buildStatus(snapshot(), [], DEFAULT_SETTINGS, NOW).display).toBe('remaining');
+    const used = { ...DEFAULT_SETTINGS, display: 'used' as const };
+    const status = buildStatus(snapshot(), [], used, NOW);
+    expect(status.display).toBe('used');
+    // Thresholds keep running on the used percent whatever the display mode.
+    expect(status.severity).toBe('warn');
+  });
+
+  it('round-trips the display mode and ignores an invalid one', () => {
+    const used = normalizeSettings({ display: 'used' }, DEFAULT_SETTINGS);
+    expect(used.display).toBe('used');
+    expect(normalizeSettings({ display: 'sideways' }, used).display).toBe('used');
+    expect(normalizeSettings({ display: 42 }, used).display).toBe('used');
+    expect(normalizeSettings({}, used).display).toBe('used');
+    expect(normalizeSettings({ display: 'remaining' }, used).display).toBe('remaining');
+  });
+
   it('merges settings and only accepts https webhooks', () => {
     const s = normalizeSettings({ trmnl_webhook_url: 'https://trmnl.com/api/custom_plugins/x' }, DEFAULT_SETTINGS);
     expect(s.trmnl_webhook_url).toBe('https://trmnl.com/api/custom_plugins/x');

@@ -107,6 +107,17 @@ describe('routes', () => {
     };
     expect(got.warn).toBe(50);
 
+    await put({ display: 'used' });
+    await put({ display: 'sideways' });
+    await worker.fetch(
+      req('/v1/ingest', { method: 'POST', headers: AUTH, body: JSON.stringify(snapshotBody()) }),
+      env,
+    );
+    const status = (await (
+      await worker.fetch(req('/v1/status', { headers: AUTH }), env)
+    ).json()) as { display: string };
+    expect(status.display).toBe('used');
+
     await put({ trmnl_webhook_url: null });
     expect(JSON.parse(env.QUOTA.store.get('tokens:trmnl')!)).toEqual([]);
   });
