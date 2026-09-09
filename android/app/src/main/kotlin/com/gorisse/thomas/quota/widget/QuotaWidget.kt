@@ -97,22 +97,40 @@ class QuotaWidget : GlanceAppWidget() {
     }
 }
 
-/** Use the actual host size: the old 110 × 40 breakpoint shrank even spacious cells. */
+/**
+ * A 2 x 1 cell is one row high once the launcher's own widget insets are taken out, so the
+ * ring and the provider name cannot be stacked — the name was rendering half cut off. The
+ * mark carries the identity instead, inline with the ring, which also buys the ring the
+ * pixels the name was wasting. The ring is sized from the height that is actually left.
+ */
 @Composable
 private fun SmallContent(snapshot: Snapshot, mode: DisplayMode) {
     val stale = snapshot.isStale()
     val height = LocalSize.current.height.value
+    val diameter = (height - 30).toInt().coerceIn(30, 48)
     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
         ProviderId.entries.forEach { id ->
             val window = snapshot.status.providers[id.key]?.sessionWindow()
-            Column(GlanceModifier.defaultWeight(), horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
-                if (height >= 64) {
-                    MiniRing(window, stale, diameterDp = 42, mode = mode)
-                    ProviderLabel(id)
+            Row(
+                // Without this the second provider's mark sits closer to the first
+                // provider's ring than to its own; the pair stops reading as a pair.
+                GlanceModifier.defaultWeight().padding(horizontal = 6.dp),
+                verticalAlignment = Alignment.Vertical.CenterVertically,
+                horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
+            ) {
+                if (height >= 56) {
+                    ProviderMark(id, sizeDp = 16)
+                    Spacer(GlanceModifier.size(6.dp))
+                    MiniRing(window, stale, diameterDp = diameter, mode = mode)
                 } else {
-                    ProviderLabel(id)
-                    Text(window?.let { "${it.shown(mode)}%" } ?: "—",
-                        style = TextStyle(color = primaryText(), fontSize = 16.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                    // Too short for a ring at all: the mark and the number, nothing else.
+                    ProviderMark(id, sizeDp = 14)
+                    Spacer(GlanceModifier.size(5.dp))
+                    Text(
+                        window?.let { "${it.shown(mode)}%" } ?: "\u2014",
+                        style = TextStyle(color = primaryText(), fontSize = 16.sp, fontWeight = FontWeight.Bold),
+                        maxLines = 1,
+                    )
                 }
             }
         }
@@ -242,16 +260,6 @@ private fun ProviderMark(id: ProviderId?, sizeDp: Int = 14) {
         colorFilter = ColorFilter.tint(ColorProvider(id.accent)),
         modifier = GlanceModifier.size(sizeDp.dp),
     )
-}
-
-@Composable
-private fun ProviderLabel(id: ProviderId) {
-    Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
-        ProviderMark(id, sizeDp = 12)
-        Spacer(GlanceModifier.size(4.dp))
-        Text(id.displayName, style = TextStyle(color = primaryText(), fontSize = 12.sp,
-            fontWeight = FontWeight.Medium), maxLines = 1)
-    }
 }
 
 private fun Provider.sessionWindow(): Window? = widgetWindows(1).firstOrNull()
