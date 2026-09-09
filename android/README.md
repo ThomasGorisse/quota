@@ -29,15 +29,22 @@ adb shell am start -n com.gorisse.thomas.quota/.debug.WidgetPreviewActivity
 ```
 
 That debug activity binds the real provider into an `AppWidgetHost` at 2×1 and 4×2, so what it
-shows is the actual RemoteViews Glance produces.
+shows is the actual RemoteViews Glance produces. It is not a substitute for the launcher,
+though: it hard-codes 160 × 80 dp, and a real 2 × 1 cell is 172 × 104 dp on a Pixel 7a. That
+12 dp gap is the whole margin the 2 × 1 layout has, so the preview is the *tighter* of the two
+— useful as a worst case, misleading as a portrait. The screenshots below are launcher crops.
 
 ## Screenshots
 
 | | |
 |---|---|
 | ![home light](docs/screenshots/home-light.png) | ![home dark](docs/screenshots/home-dark.png) |
-| ![home dark, used mode](docs/screenshots/home-dark-used.png) | ![2x1](docs/screenshots/widget-2x1-dark.png) |
-| ![4x2](docs/screenshots/widget-4x2-dark.png) | |
+| ![home dark, used mode](docs/screenshots/home-dark-used.png) | ![2x1 dark](docs/screenshots/widget-2x1-dark.png) |
+| ![2x1 light](docs/screenshots/widget-2x1-light.png) | ![4x2 dark](docs/screenshots/widget-4x2-dark.png) |
+| ![4x2 light](docs/screenshots/widget-4x2-light.png) | |
+
+The four widget shots are the widget placed on the emulator's own launcher, not the preview
+harness — 2 × 1 and 4 × 2, light and dark.
 
 The third shot is the same screen with the header's **Left / Used** control flipped: the arcs
 grow with usage and the big number is the used percentage.
