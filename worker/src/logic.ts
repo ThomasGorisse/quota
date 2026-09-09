@@ -165,6 +165,14 @@ export function buildStatus(
   };
 }
 
+/**
+ * The windows a provider declares, in the order it declared them. Gemini names its windows
+ * after the models it meters, so nothing downstream may assume `session` / `weekly` exist.
+ */
+function declaredWindows(p: Provider | undefined): Window[] {
+  return Array.isArray(p?.windows) ? p.windows : [];
+}
+
 /** Flat variables for the TRMNL webhook (max 2 kb of payload). */
 export function buildMergeVariables(
   status: StatusBody,
@@ -172,6 +180,7 @@ export function buildMergeVariables(
 ): Record<string, string | number | boolean> {
   const claude = status.providers.claude;
   const codex = status.providers.codex;
+  const gemini = status.providers.gemini;
   const vars: Record<string, string | number | boolean> = {
     severity: status.severity,
     updated: formatClock(status.collected_at),
@@ -187,6 +196,19 @@ export function buildMergeVariables(
   for (const [key, provider, id] of pairs) {
     const w = windowOf(provider, id);
     vars[key] = typeof w?.percent === 'number' ? Math.round(w.percent) : 0;
+    vars[`${key}_resets_in`] = formatResetsIn(w?.resets_at, now);
+  }
+
+  // Gemini is positional, not named: the collector sends its buckets most-consumed first,
+  // so window 0 is the headline and window 1 is the secondary. `gemini_present` is what the
+  // template branches on — an absent Gemini must draw no column at all, not an empty one.
+  const geminiWindows = declaredWindows(gemini);
+  vars.gemini_present = geminiWindows.length > 0;
+  vars.gemini_plan = gemini?.plan ?? '';
+  for (const [index, key] of [[0, 'gemini_session'], [1, 'gemini_weekly']] as const) {
+    const w = geminiWindows[index];
+    vars[key] = typeof w?.percent === 'number' ? Math.round(w.percent) : 0;
+    vars[`${key}_label`] = w?.label ?? '';
     vars[`${key}_resets_in`] = formatResetsIn(w?.resets_at, now);
   }
   return vars;

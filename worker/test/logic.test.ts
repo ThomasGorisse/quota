@@ -43,6 +43,25 @@ function snapshot(claudeSession = 11, weekly = 60, at = '2026-09-09T18:00:00Z'):
   };
 }
 
+/** A snapshot with the third provider: window ids are model names, not `session`/`weekly`. */
+function withGemini(): Snapshot {
+  const base = snapshot();
+  return {
+    ...base,
+    providers: {
+      ...base.providers,
+      gemini: {
+        plan: 'Standard',
+        windows: [
+          { id: 'gemini-3-pro', label: '3 Pro', percent: 62, resets_at: '2026-09-09T23:15:00Z' },
+          { id: 'gemini-2-5-pro', label: '2.5 Pro', percent: 29, resets_at: '2026-09-10T00:00:00Z' },
+        ],
+        extra: { buckets: 4 },
+      },
+    },
+  };
+}
+
 describe('token', () => {
   it('accepts a 43-char base64url token only', () => {
     expect(isValidToken(TOKEN)).toBe(true);
@@ -165,6 +184,43 @@ describe('merge variables', () => {
     const v = buildMergeVariables(status, NOW);
     expect(v.codex_reserve).toBe(0);
     expect(v.codex_reserve_resets_in).toBe('');
+  });
+
+  it('says Gemini is absent when the collector skipped it', () => {
+    const v = buildMergeVariables(buildStatus(snapshot(), [], DEFAULT_SETTINGS, NOW), NOW);
+    expect(v.gemini_present).toBe(false);
+    expect(v.gemini_session).toBe(0);
+    expect(v.gemini_session_label).toBe('');
+  });
+
+  it('flattens Gemini positionally, headline first', () => {
+    const v = buildMergeVariables(buildStatus(withGemini(), [], DEFAULT_SETTINGS, NOW), NOW);
+    expect(v.gemini_present).toBe(true);
+    expect(v.gemini_plan).toBe('Standard');
+    expect(v.gemini_session).toBe(62);
+    expect(v.gemini_session_label).toBe('3 Pro');
+    expect(v.gemini_session_resets_in).toBe('5h 15m');
+    expect(v.gemini_weekly).toBe(29);
+    expect(v.gemini_weekly_label).toBe('2.5 Pro');
+    expect(JSON.stringify(v).length).toBeLessThan(2048);
+  });
+});
+
+describe('a third provider', () => {
+  it('rides the same contract with no id the worker knows', () => {
+    const parsed = validateSnapshot(JSON.parse(JSON.stringify(withGemini())));
+    expect(parsed?.providers.gemini.windows).toHaveLength(2);
+    expect(parsed?.providers.gemini.plan).toBe('Standard');
+    expect(parsed?.providers.gemini.extra).toEqual({ buckets: 4 });
+  });
+
+  it('counts towards severity and history like any other', () => {
+    const critical = withGemini();
+    critical.providers.gemini.windows[0].percent = 91;
+    expect(worstSeverity(critical, DEFAULT_SETTINGS)).toBe('critical');
+    const status = buildStatus(critical, appendHistory([], critical, NOW), DEFAULT_SETTINGS, NOW);
+    expect(status.history[0]['gemini.gemini-3-pro']).toBe(91);
+    expect(status.providers.gemini.windows[1].label).toBe('2.5 Pro');
   });
 });
 
