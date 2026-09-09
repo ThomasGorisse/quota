@@ -173,14 +173,16 @@ enum DisplayMode: String, Sendable, CaseIterable, Identifiable {
     }
 }
 
-/// Display order and labels for the two providers this version knows about.
+/// Display order and labels for the providers this version knows about. Gemini only appears
+/// once the worker reports it: an unpaired Gemini CLI is an absent provider, not an empty card.
 enum ProviderId: String, CaseIterable, Sendable {
-    case claude, codex
+    case claude, codex, gemini
 
     var displayName: String {
         switch self {
         case .claude: return "Claude"
         case .codex: return "Codex"
+        case .gemini: return "Gemini"
         }
     }
 }

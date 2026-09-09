@@ -44,6 +44,12 @@ enum DemoData {
                         window("weekly", "Week", used: 34, in: 140 * 3600, from: now),
                         window("reserve", "Reserve", used: 10, in: 96 * 3600, from: now),
                     ]),
+                // The Code Assist buckets are per model, most consumed first, so the headline
+                // window is a model name rather than a time window.
+                "gemini": ProviderStatus(plan: "Standard", windows: [
+                    window("gemini-3-pro", "3 Pro", used: 62, in: 315 * 60, from: now),
+                    window("gemini-2-5-pro", "2.5 Pro", used: 29, in: 14 * 3600, from: now),
+                ]),
             ],
             severity: Severity.critical.wire,
             display: display.rawValue

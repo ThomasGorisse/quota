@@ -14,7 +14,7 @@ struct QuotaWidget: Widget {
             QuotaWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Quota")
-        .description("Claude and Codex limits, at a glance.")
+        .description("Claude, Codex and Gemini limits, at a glance.")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular])
     }
 }

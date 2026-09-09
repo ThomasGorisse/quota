@@ -59,16 +59,37 @@ struct BrandMark: View {
         switch providerName.lowercased() {
         case "claude": return "BrandClaude"
         case "codex": return "BrandCodex"
+        case "gemini": return "BrandGemini"
         default: return nil
         }
     }
+
+    /// The Gemini mark is the one that carries its own palette: a flat tint of that logo is
+    /// a different logo. Xcode's SVG subset does not render lobehub's four overlapping
+    /// gradients, so the vendored single-path star is filled with the brand sweep instead —
+    /// same colours, one shape, and it survives every rendering scale.
+    private var isGemini: Bool { providerName.lowercased() == "gemini" }
 
     var body: some View {
         RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
             .fill(accent.opacity(0.16))
             .frame(width: size, height: size)
             .overlay {
-                if let assetName {
+                if isGemini {
+                    RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
+                        .fill(QuotaTheme.geminiSweep)
+                        .opacity(0.18)
+                }
+            }
+            .overlay {
+                if let assetName, isGemini {
+                    Image(assetName)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: size * 0.56, height: size * 0.56)
+                        .foregroundStyle(QuotaTheme.geminiSweep)
+                } else if let assetName {
                     Image(assetName)
                         .renderingMode(.template)
                         .resizable()
@@ -95,6 +116,7 @@ struct BrandGlyph: View {
         switch providerName.lowercased() {
         case "claude": return "BrandClaude"
         case "codex": return "BrandCodex"
+        case "gemini": return "BrandGemini"
         default: return nil
         }
     }
@@ -102,6 +124,8 @@ struct BrandGlyph: View {
     var body: some View {
         if let assetName {
             Image(assetName)
+                // Template even for Gemini here: a lock-screen glyph is tinted by the system
+                // anyway, and a 9 pt gradient would read as mud.
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
@@ -115,6 +139,7 @@ func providerSubtitle(_ name: String) -> String? {
     switch name.lowercased() {
     case "claude": return "Anthropic"
     case "codex": return "ChatGPT"
+    case "gemini": return "Google"
     default: return nil
     }
 }
