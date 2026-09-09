@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,7 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -42,6 +45,7 @@ fun RingGauge(
     modifier: Modifier = Modifier,
     diameter: Dp = 112.dp,
     resetsIn: Duration? = window.resetsIn(),
+    showDetails: Boolean = true,
 ) {
     val severity = if (stale) Severity.STALE else window.severity
     val color = severity.color
@@ -52,40 +56,45 @@ fun RingGauge(
     )
 
     Column(
-        modifier = modifier.semantics {
+        modifier = modifier.clearAndSetSemantics {
             contentDescription =
-                "${window.label}: ${window.remaining} percent left, ${formatResetsIn(resetsIn)}"
+                "${window.label}: ${window.remaining} percent left, ${formatResetsIn(resetsIn)}${if (stale) ", out of date" else ""}"
         },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Dimens.Grid),
     ) {
+        if (showDetails) Text(
+            text = window.label,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Box(contentAlignment = Alignment.Center) {
             Ring(
                 fraction = sweep,
                 color = color,
                 diameter = diameter,
-                stroke = Dimens.RingStroke,
+                stroke = if (showDetails) Dimens.RingStroke else 6.dp,
             )
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "${window.remaining}",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontSize = (diameter.value * 0.30f).sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = "% left",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = "${window.remaining}",
+                        style = MaterialTheme.typography.displayMedium,
+                        fontSize = (diameter.value * 0.34f).sp,
+                        lineHeight = (diameter.value * 0.36f).sp,
+                        letterSpacing = (-1.5).sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text("%", fontSize = (diameter.value * 0.13f).sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = (diameter.value * .025f).dp))
+                }
+                Text("left", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        Text(
-            text = window.label,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
+        if (showDetails) Text(
             text = formatResetsIn(resetsIn),
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,

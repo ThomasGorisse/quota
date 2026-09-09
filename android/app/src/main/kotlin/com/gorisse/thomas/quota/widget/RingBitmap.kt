@@ -59,13 +59,21 @@ object RingBitmap {
         if (centerText != null) {
             val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = centerTextColorArgb
-                textAlign = Paint.Align.CENTER
-                textSize = size * 0.34f
-                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                textAlign = Paint.Align.LEFT
+                textSize = size * 0.35f
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             }
             val metrics = text.fontMetrics
             val baseline = size / 2f - (metrics.ascent + metrics.descent) / 2f
-            canvas.drawText(centerText, size / 2f, baseline, text)
+            if (centerText.all(Char::isDigit)) {
+                val unit = Paint(text).apply { textSize = size * 0.15f }
+                val width = text.measureText(centerText) + unit.measureText("%")
+                val left = (size - width) / 2f
+                canvas.drawText(centerText, left, baseline, text)
+                canvas.drawText("%", left + text.measureText(centerText), baseline, unit)
+            } else {
+                canvas.drawText(centerText, (size - text.measureText(centerText)) / 2f, baseline, text)
+            }
         }
         return bitmap
     }

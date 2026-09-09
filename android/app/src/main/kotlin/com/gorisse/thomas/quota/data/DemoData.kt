@@ -1,5 +1,7 @@
 package com.gorisse.thomas.quota.data
 
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.time.Duration
 import java.time.Instant
 
@@ -18,6 +20,15 @@ object DemoData {
         ageSeconds = 42,
         stale = false,
         severity = Severity.CRITICAL.wire,
+        history = (0..24).map { hour ->
+            buildJsonObject {
+                put("t", (now - Duration.ofHours((24 - hour).toLong())).toString())
+                put("claude.session", if (hour < 22) 8 + hour * 3 else 5 + (hour - 22) * 3)
+                put("claude.weekly", 44 + hour)
+                put("codex.session", 20 + hour * 3)
+                put("codex.weekly", 10 + hour)
+            }
+        },
         providers = mapOf(
             "claude" to Provider(
                 plan = "max",

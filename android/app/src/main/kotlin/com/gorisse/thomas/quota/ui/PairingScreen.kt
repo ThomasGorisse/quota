@@ -8,6 +8,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -38,10 +45,10 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.gorisse.thomas.quota.BuildConfig
 import com.gorisse.thomas.quota.data.DEFAULT_HOST
+import com.gorisse.thomas.quota.data.ProviderId
 import com.gorisse.thomas.quota.data.Pairing
 import com.gorisse.thomas.quota.data.parsePairingUrl
 import com.gorisse.thomas.quota.ui.theme.Dimens
-import com.gorisse.thomas.quota.ui.theme.QuotaColors
 
 /**
  * Pairing: paste the URL the collector printed, or scan its QR code.
@@ -55,6 +62,7 @@ fun PairingScreen(
     onPaired: (Pairing) -> Unit,
     onDemoData: () -> Unit,
     modifier: Modifier = Modifier,
+    pairingError: String? = null,
 ) {
     val context = LocalContext.current
     var url by remember { mutableStateOf("") }
@@ -64,7 +72,7 @@ fun PairingScreen(
     fun submit(candidate: String) {
         val pairing = parsePairingUrl(candidate)
         if (pairing == null) {
-            errorText = "That is not a pairing URL. It looks like $DEFAULT_HOST/#t=…"
+            errorText = "Paste the complete pairing link from your Mac, including #t= and the code after it."
         } else {
             errorText = null
             onPaired(pairing)
@@ -79,19 +87,28 @@ fun PairingScreen(
             .padding(Dimens.Grid * 3),
         verticalArrangement = Arrangement.spacedBy(Dimens.Grid * 2),
     ) {
+        QuotaWordmark()
+        Spacer(Modifier.height(16.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ProviderMark(ProviderId.CLAUDE)
+            ProviderMark(ProviderId.CODEX)
+        }
         Text(
-            text = "Pair this phone",
-            style = MaterialTheme.typography.headlineSmall,
+            text = "Your AI usage,\nat a glance.",
+            style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
-            text = "Run the collector on your Mac. It prints a pairing link — scan its QR code " +
-                "or paste it here. Your Claude and ChatGPT credentials stay on the Mac.",
+            text = "Connect Claude and Codex to see what’s left, when it resets, and how your usage changes.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
+        pairingError?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+        }
         Card(
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             shape = RoundedCornerShape(Dimens.CardRadius),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             modifier = Modifier.fillMaxWidth(),
@@ -100,6 +117,9 @@ fun PairingScreen(
                 modifier = Modifier.padding(Dimens.Grid * 2),
                 verticalArrangement = Arrangement.spacedBy(Dimens.Grid * 2),
             ) {
+                Text("Connect your Mac", style = MaterialTheme.typography.titleLarge)
+                Text("Run the Quota collector on your Mac, then paste its pairing link or scan the QR code.",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = url,
                     onValueChange = {
@@ -109,6 +129,9 @@ fun PairingScreen(
                     label = { Text("Pairing URL") },
                     placeholder = { Text("$DEFAULT_HOST/#t=…") },
                     singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    shape = RoundedCornerShape(12.dp),
+                    keyboardActions = KeyboardActions(onDone = { if (url.isNotBlank()) submit(url) }),
                     isError = errorText != null,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Uri,
@@ -120,7 +143,7 @@ fun PairingScreen(
                     Text(
                         text = it,
                         style = MaterialTheme.typography.bodySmall,
-                        color = QuotaColors.Critical,
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
                 Row(
@@ -147,7 +170,8 @@ fun PairingScreen(
                                     ).show()
                                 }
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                        shape = RoundedCornerShape(12.dp),
                     ) {
                         Icon(Icons.Filled.QrCodeScanner, contentDescription = null)
                         Text("Scan QR", modifier = Modifier.padding(start = Dimens.Grid))
@@ -155,13 +179,17 @@ fun PairingScreen(
                     Button(
                         onClick = { submit(url) },
                         enabled = url.isNotBlank(),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                        shape = RoundedCornerShape(12.dp),
                     ) {
-                        Text("Pair")
+                        Text("Connect")
                     }
                 }
             }
         }
+
+        Text("Your Claude and ChatGPT credentials stay on your Mac. Only usage and reset times are synced.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
         if (BuildConfig.DEMO_DATA_AVAILABLE) {
             Card(
@@ -180,8 +208,7 @@ fun PairingScreen(
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
-                            text = "Debug builds only. Fills the app and the widget with a " +
-                                "canned status so the UI can be checked without a backend.",
+                            text = "Explore the app and widgets with sample usage.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

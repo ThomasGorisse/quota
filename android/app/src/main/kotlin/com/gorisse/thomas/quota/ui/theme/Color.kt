@@ -47,3 +47,12 @@ val ProviderId.accent: Color
         ProviderId.CLAUDE -> QuotaColors.Claude
         ProviderId.CODEX -> QuotaColors.Codex
     }
+
+/** Keep the semantic hues, with accessible text contrast on white. */
+@androidx.compose.runtime.Composable
+fun Severity.textColor(): Color = if (androidx.compose.foundation.isSystemInDarkTheme()) color else when (this) {
+    Severity.OK -> Color(0xFF15803D)
+    Severity.WARN -> Color(0xFF92400E)
+    Severity.CRITICAL -> Color(0xFFB91C1C)
+    Severity.STALE -> Color(0xFF4B5563)
+}

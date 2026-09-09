@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
                     if (paired) {
                         HomeScreen(
                             snapshot = snapshot,
+                            demo = viewModel.isDemo,
                             nowMillis = now,
                             refreshing = refreshing,
                             error = error,
@@ -54,6 +55,7 @@ class MainActivity : ComponentActivity() {
                         )
                     } else {
                         PairingScreen(
+                            pairingError = error,
                             onPaired = viewModel::pair,
                             onDemoData = viewModel::enableDemoData,
                             modifier = insets,

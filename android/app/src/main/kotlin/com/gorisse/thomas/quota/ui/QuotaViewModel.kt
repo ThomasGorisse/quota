@@ -23,6 +23,7 @@ class QuotaViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _paired = MutableStateFlow(repository.isPaired || repository.isDemo)
     val paired: StateFlow<Boolean> = _paired.asStateFlow()
+    val isDemo: Boolean get() = repository.isDemo
 
     private val _refreshing = MutableStateFlow(false)
     val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
@@ -47,12 +48,14 @@ class QuotaViewModel(application: Application) : AndroidViewModel(application) {
     fun pair(pairing: Pairing) {
         repository.pairingStore.demoData = false
         repository.pairingStore.write(pairing)
+        _error.value = null
         _paired.value = true
         refresh()
     }
 
     fun enableDemoData() {
         repository.pairingStore.demoData = true
+        _error.value = null
         _paired.value = true
         refresh()
     }
@@ -77,11 +80,11 @@ class QuotaViewModel(application: Application) : AndroidViewModel(application) {
                 .onFailure { throwable ->
                     if (throwable is UnauthorizedException) {
                         unpair()
-                        _error.value = throwable.message
+                        _error.value = "This pairing link has expired or is no longer valid. Use the latest link from your Mac."
                     } else {
                         _error.value = when (throwable) {
-                            is IOException -> throwable.message ?: "Could not reach the server"
-                            else -> throwable.message ?: "Something went wrong"
+                            is IOException -> "Check your connection and make sure the collector on your Mac is running. Then try again."
+                            else -> "Your usage couldn’t be loaded. Try again in a moment."
                         }
                     }
                 }

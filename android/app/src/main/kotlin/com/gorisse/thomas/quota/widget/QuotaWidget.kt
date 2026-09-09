@@ -26,6 +26,7 @@ import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.text.FontWeight
@@ -42,9 +43,7 @@ import com.gorisse.thomas.quota.data.Window
 import com.gorisse.thomas.quota.ui.formatAge
 import com.gorisse.thomas.quota.ui.formatResetsInShort
 import com.gorisse.thomas.quota.ui.theme.QuotaColors
-import com.gorisse.thomas.quota.ui.theme.accent
 import com.gorisse.thomas.quota.ui.theme.argb
-import com.gorisse.thomas.quota.ui.theme.color
 
 /**
  * Two layouts, chosen by cell size: 2×1 shows the two 5 h rings, 4×2 shows every window with
@@ -52,20 +51,20 @@ import com.gorisse.thomas.quota.ui.theme.color
  */
 class QuotaWidget : GlanceAppWidget() {
 
-    override val sizeMode = SizeMode.Responsive(setOf(SMALL, LARGE))
+    override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val snapshot = StatusRepository.get(context).snapshot.value
         provideContent {
             GlanceTheme {
                 val size = LocalSize.current
-                val wide = size.width >= LARGE.width - 8.dp && size.height >= LARGE.height - 8.dp
+                val wide = size.width >= LARGE.width && size.height >= LARGE.height
                 Column(
                     modifier = GlanceModifier
                         .fillMaxSize()
                         .background(surface())
                         .cornerRadius(20.dp)
-                        .padding(if (wide) 12.dp else 6.dp)
+                        .padding(if (wide) 12.dp else 4.dp)
                         .clickable(actionStartActivity<MainActivity>()),
                     verticalAlignment = Alignment.Vertical.CenterVertically,
                     horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
@@ -87,88 +86,77 @@ class QuotaWidget : GlanceAppWidget() {
 
     companion object {
         val SMALL = DpSize(110.dp, 40.dp)
-        val LARGE = DpSize(250.dp, 110.dp)
+        val LARGE = DpSize(250.dp, 150.dp)
     }
 }
 
-/** 2×1: Claude 5 h and Codex 5 h, nothing else — that is all that fits and all that matters. */
+/** Use the actual host size: the old 110 × 40 breakpoint shrank even spacious cells. */
 @Composable
 private fun SmallContent(snapshot: Snapshot) {
     val stale = snapshot.isStale()
-    Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
-        ProviderId.entries.forEachIndexed { index, providerId ->
-            val window = snapshot.status.providers[providerId.key]?.sessionWindow()
-            if (index > 0) Spacer(GlanceModifier.size(10.dp))
-            Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
-                MiniRing(window = window, stale = stale, diameterDp = 30)
-                Text(
-                    text = providerId.displayName.take(6),
-                    style = TextStyle(color = secondaryText(), fontSize = 9.sp),
-                )
+    val height = LocalSize.current.height.value
+    Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
+        ProviderId.entries.forEach { id ->
+            val window = snapshot.status.providers[id.key]?.sessionWindow()
+            Column(GlanceModifier.defaultWeight(), horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
+                if (height >= 64) {
+                    MiniRing(window, stale, diameterDp = 42)
+                    Text(id.displayName, style = TextStyle(color = primaryText(), fontSize = 12.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+                } else {
+                    Text(id.displayName, style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 1)
+                    Text(window?.let { "${it.remaining}%" } ?: "—",
+                        style = TextStyle(color = primaryText(), fontSize = 16.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                }
             }
         }
     }
 }
 
-/** 4×2: the severity dot, the freshness, then every window of every provider with labels. */
+/** Four primary windows stay equal; reserve is a secondary line, as on the dashboard. */
 @Composable
 private fun LargeContent(snapshot: Snapshot) {
     val stale = snapshot.isStale()
-    Column(
-        modifier = GlanceModifier.fillMaxSize(),
-        verticalAlignment = Alignment.Vertical.CenterVertically,
-    ) {
-        Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
+    val diameter = minOf((LocalSize.current.width.value - 48) / 4, LocalSize.current.height.value - 118)
+        .toInt().coerceIn(32, 52)
+    Column(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.Vertical.CenterVertically) {
+        Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
+            Text("Quota", style = TextStyle(color = primaryText(), fontSize = 14.sp, fontWeight = FontWeight.Bold))
+            Spacer(GlanceModifier.size(8.dp))
+            Text("Updated " + formatAge(snapshot.ageSeconds()),
+                modifier = GlanceModifier.defaultWeight(), style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 1)
             SeverityDot(snapshot.severity())
-            Spacer(GlanceModifier.size(6.dp))
-            Text(
-                text = "Quota",
-                style = TextStyle(
-                    color = primaryText(),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
-            )
-            Spacer(GlanceModifier.size(6.dp))
-            Text(
-                text = formatAge(snapshot.ageSeconds()),
-                style = TextStyle(color = secondaryText(), fontSize = 11.sp),
-            )
         }
         Spacer(GlanceModifier.size(8.dp))
-        Row(verticalAlignment = Alignment.Vertical.Top) {
-            snapshot.orderedProviders().forEachIndexed { index, (name, provider) ->
-                if (index > 0) Spacer(GlanceModifier.size(16.dp))
-                Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
-                    Text(
-                        text = name,
-                        style = TextStyle(
-                            color = ColorProvider(
-                                ProviderId.of(name.lowercase())?.accent
-                                    ?: QuotaColors.TextSecondaryDark,
-                            ),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                        ),
-                    )
+        Row(GlanceModifier.fillMaxWidth()) {
+            snapshot.orderedProviders().forEach { (name, provider) ->
+                Column(GlanceModifier.defaultWeight(), horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
+                    Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
+                        Text(name, style = TextStyle(color = primaryText(), fontSize = 13.sp, fontWeight = FontWeight.Bold))
+                        provider.plan?.let {
+                            Text(" · " + it.replaceFirstChar(Char::uppercase),
+                                style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 1)
+                        }
+                    }
                     Spacer(GlanceModifier.size(4.dp))
-                    Row {
-                        provider.windows.forEachIndexed { windowIndex, window ->
-                            if (windowIndex > 0) Spacer(GlanceModifier.size(6.dp))
-                            Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
-                                MiniRing(window = window, stale = stale, diameterDp = 50)
-                                Text(
-                                    text = window.label,
-                                    style = TextStyle(color = primaryText(), fontSize = 9.sp),
-                                )
-                                Text(
-                                    text = formatResetsInShort(window.resetsIn()),
-                                    style = TextStyle(color = secondaryText(), fontSize = 9.sp),
-                                )
+                    Row(GlanceModifier.fillMaxWidth()) {
+                        provider.windows.filter { it.id != "reserve" }.take(2).forEach { window ->
+                            Column(GlanceModifier.defaultWeight(), horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
+                                MiniRing(window, stale, diameter)
+                                Text(window.label, style = TextStyle(color = primaryText(), fontSize = 12.sp), maxLines = 1)
+                                Text(formatResetsInShort(window.resetsIn()), style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 1)
                             }
                         }
                     }
                 }
+            }
+        }
+        Spacer(GlanceModifier.size(8.dp))
+        val reserve = snapshot.status.providers[ProviderId.CODEX.key]?.windows?.firstOrNull { it.id == "reserve" }
+        Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
+            Text("Remaining", GlanceModifier.defaultWeight(), style = TextStyle(color = secondaryText(), fontSize = 11.sp))
+            reserve?.let {
+                Text("Reserve ${it.remaining}% · ${formatResetsInShort(it.resetsIn())}",
+                    style = TextStyle(color = primaryText(), fontSize = 11.sp), maxLines = 1)
             }
         }
     }
@@ -206,12 +194,10 @@ private fun MiniRing(window: Window?, stale: Boolean, diameterDp: Int) {
     val dark = isDarkWidget(context)
     val bitmap = RingBitmap.render(
         sizePx = (diameterDp * density).toInt(),
-        // 8 dp stroke on the phone reads as a hairline at 30 dp, so the widget ring keeps a
-        // constant *proportion* instead: 8/44 of the diameter, the DESIGN.md ratio at 4x2.
-        strokePx = diameterDp * density * (8f / 44f),
+        strokePx = diameterDp * density * 0.10f,
         fraction = (window?.remaining ?: 0) / 100f,
         colorArgb = severity.argb,
-        centerText = window?.remaining?.toString(),
+        centerText = window?.remaining?.toString() ?: "—",
         centerTextColorArgb = if (dark) {
             QuotaColors.TextPrimaryDark.toArgb()
         } else {
@@ -220,7 +206,7 @@ private fun MiniRing(window: Window?, stale: Boolean, diameterDp: Int) {
     )
     Image(
         provider = ImageProvider(bitmap),
-        contentDescription = window?.let { "${it.label}: ${it.remaining} percent left" },
+        contentDescription = window?.let { "${it.label}: ${it.remaining} percent left${if (stale) ", out of date" else ""}" } ?: "No usage available",
         modifier = GlanceModifier.size(diameterDp.dp),
     )
 }

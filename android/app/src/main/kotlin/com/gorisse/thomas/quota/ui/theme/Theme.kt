@@ -7,6 +7,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -25,6 +26,7 @@ private val DarkScheme = darkColorScheme(
     onBackground = QuotaColors.TextPrimaryDark,
     onSurface = QuotaColors.TextPrimaryDark,
     onSurfaceVariant = QuotaColors.TextSecondaryDark,
+    outlineVariant = Color(0xFF252C35),
     primary = QuotaColors.Ok,
     onPrimary = QuotaColors.BackgroundDark,
 )
@@ -35,8 +37,9 @@ private val LightScheme = lightColorScheme(
     onBackground = QuotaColors.TextPrimaryLight,
     onSurface = QuotaColors.TextPrimaryLight,
     onSurfaceVariant = QuotaColors.TextSecondaryLight,
-    primary = QuotaColors.Ok,
-    onPrimary = QuotaColors.BackgroundLight,
+    outlineVariant = Color(0xFFE5E7EB),
+    primary = Color(0xFF15803D),
+    onPrimary = Color.White,
 )
 
 /** Tabular figures everywhere: a gauge that reflows as digits change is unreadable. */
@@ -47,6 +50,7 @@ private val QuotaTypography = Typography().run {
         displayMedium = displayMedium.merge(TabularNumbers).copy(fontWeight = FontWeight.W600),
         headlineSmall = headlineSmall.merge(TabularNumbers).copy(fontWeight = FontWeight.W600),
         titleMedium = titleMedium.copy(fontWeight = FontWeight.W600),
+        titleLarge = titleLarge.copy(fontWeight = FontWeight.W600),
         bodySmall = bodySmall.merge(TabularNumbers),
         labelMedium = labelMedium.merge(TabularNumbers),
     )
