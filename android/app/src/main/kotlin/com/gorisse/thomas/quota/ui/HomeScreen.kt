@@ -206,7 +206,10 @@ private fun ProviderCard(
                         showDetails = false, mode = mode)
                 }
             }
-            ProviderHistory(name.lowercase(), snapshot.status.history, stale, now)
+            ProviderHistory(
+                name.lowercase(), snapshot.status.history, stale, now,
+                windowIds = provider.windows.take(2).map { it.id },
+            )
         }
     }
 }

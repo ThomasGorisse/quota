@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import com.gorisse.thomas.quota.R
 import com.gorisse.thomas.quota.data.ProviderId
 import com.gorisse.thomas.quota.ui.theme.accent
+import com.gorisse.thomas.quota.ui.theme.accentBrush
 
 @Composable
 fun QuotaWordmark(modifier: Modifier = Modifier) {
@@ -35,27 +36,44 @@ fun QuotaWordmark(modifier: Modifier = Modifier) {
 }
 
 /**
- * The providers' real marks: `docs/brand/claude.svg` and `docs/brand/openai.svg`, converted
- * to 24 × 24 vector drawables, tinted with the provider accent inside its rounded square.
+ * The providers' real marks: `docs/brand/claude.svg`, `openai.svg` and `gemini.svg`,
+ * converted to 24 × 24 vector drawables inside a rounded square of their own accent.
+ *
+ * Claude and Codex are single-colour marks and take the accent as a tint. The Gemini mark
+ * carries the Google sweep in the drawable itself, so it is drawn untinted and its tile
+ * takes the same sweep rather than a flat wash.
  */
 @Composable
 fun ProviderMark(id: ProviderId?, modifier: Modifier = Modifier, size: Dp = 32.dp) {
-    val color = id?.accent ?: MaterialTheme.colorScheme.onSurfaceVariant
+    val fallback = MaterialTheme.colorScheme.onSurfaceVariant
+    val color = id?.accent() ?: fallback
     Box(
         modifier = modifier
             .size(size)
-            .background(color.copy(alpha = 0.12f), RoundedCornerShape(size / 4)),
+            .background(
+                brush = id?.accentBrush(0.12f) ?: androidx.compose.ui.graphics.SolidColor(fallback.copy(alpha = 0.12f)),
+                shape = RoundedCornerShape(size / 4),
+            ),
         contentAlignment = Alignment.Center,
     ) {
         val mark = when (id) {
             ProviderId.CODEX -> R.drawable.ic_brand_openai
+            ProviderId.GEMINI -> R.drawable.ic_brand_gemini
             else -> R.drawable.ic_brand_claude
         }
-        Icon(
-            painter = painterResource(mark),
-            contentDescription = null,
-            tint = color,
-            modifier = Modifier.size(size * 0.58f),
-        )
+        if (id == ProviderId.GEMINI) {
+            androidx.compose.foundation.Image(
+                painter = painterResource(mark),
+                contentDescription = null,
+                modifier = Modifier.size(size * 0.58f),
+            )
+        } else {
+            Icon(
+                painter = painterResource(mark),
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(size * 0.58f),
+            )
+        }
     }
 }

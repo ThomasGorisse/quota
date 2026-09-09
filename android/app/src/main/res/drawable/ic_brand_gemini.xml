@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  gemini.svg from docs/brand, 24x24, single path. Unlike the other two marks this one is
+  never tinted at the use site: the Google sweep IS the brand, and a flat tint would be a
+  different logo. Anything that can only take one colour uses QuotaColors.Gemini instead.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Arc flags are spaced out: Android's path parser does not accept the packed
+         "01" form the SVG source uses, and silently draws a blob instead. -->
+    <path android:pathData="M20.616 10.835a14.147 14.147 0 0 1 -4.45-3.001 14.111 14.111 0 0 1 -3.678-6.452.503.503 0 0 0 -.975 0 14.134 14.134 0 0 1 -3.679 6.452 14.155 14.155 0 0 1 -4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 0 0 0 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 0 1 4.45 3.001 14.112 14.112 0 0 1 3.679 6.453.502.502 0 0 0 .975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 0 1 3.001-4.45 14.113 14.113 0 0 1 6.453-3.678.503.503 0 0 0 0-.975 13.245 13.245 0 0 1 -2.003-.678z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="2"
+                android:startY="21"
+                android:endX="21"
+                android:endY="3"
+                android:type="linear">
+                <item android:offset="0" android:color="#4285F4" />
+                <item android:offset="0.5" android:color="#9B72CB" />
+                <item android:offset="1" android:color="#D96570" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

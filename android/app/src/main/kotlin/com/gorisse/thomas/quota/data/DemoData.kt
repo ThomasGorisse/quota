@@ -27,6 +27,8 @@ object DemoData {
                 put("claude.weekly", 44 + hour)
                 put("codex.session", 20 + hour * 3)
                 put("codex.weekly", 10 + hour)
+                put("gemini.gemini-3-pro", 20 + hour * 2)
+                put("gemini.gemini-2-5-pro", 6 + hour)
             }
         },
         providers = mapOf(
@@ -43,6 +45,15 @@ object DemoData {
                     window("session", "5 h", 92, now + Duration.ofMinutes(37)),
                     window("weekly", "Week", 34, now + Duration.ofHours(140)),
                     window("reserve", "Reserve", 10, now + Duration.ofHours(96)),
+                ),
+            ),
+            // The Code Assist buckets are per model, most consumed first, so the headline
+            // window is a model name rather than a time window.
+            "gemini" to Provider(
+                plan = "Standard",
+                windows = listOf(
+                    window("gemini-3-pro", "3 Pro", 62, now + Duration.ofMinutes(315)),
+                    window("gemini-2-5-pro", "2.5 Pro", 29, now + Duration.ofHours(14)),
                 ),
             ),
         ),

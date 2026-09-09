@@ -92,6 +92,7 @@ fun PairingScreen(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ProviderMark(ProviderId.CLAUDE)
             ProviderMark(ProviderId.CODEX)
+            ProviderMark(ProviderId.GEMINI)
         }
         Text(
             text = "Your AI usage,\nat a glance.",
@@ -99,7 +100,7 @@ fun PairingScreen(
             color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
-            text = "Connect Claude and Codex to see what’s left, when it resets, and how your usage changes.",
+            text = "Connect Claude, Codex and Gemini to see what’s left, when it resets, and how your usage changes.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
