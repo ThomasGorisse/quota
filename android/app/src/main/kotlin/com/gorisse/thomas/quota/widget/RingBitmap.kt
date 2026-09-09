@@ -6,7 +6,6 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
 import androidx.core.graphics.ColorUtils
-import com.gorisse.thomas.quota.ui.theme.QuotaColors
 
 /**
  * Glance has no arc primitive, so every widget ring is a bitmap drawn here and handed to
@@ -20,7 +19,8 @@ object RingBitmap {
      * @param strokePx ring thickness in pixels (8 dp per DESIGN.md, converted by the caller)
      * @param fraction how much is **left**, 0..1
      * @param colorArgb severity colour, already resolved (grey when stale)
-     * @param centerText the remaining percentage, or null for the smallest cells
+     * @param centerText the percentage to print, or null for the smallest cells
+     * @param trackArgb the empty part of the ring — a neutral grey, so the proportion reads
      */
     fun render(
         sizePx: Int,
@@ -29,6 +29,7 @@ object RingBitmap {
         colorArgb: Int,
         centerText: String?,
         centerTextColorArgb: Int,
+        trackArgb: Int = ColorUtils.setAlphaComponent(colorArgb, 38),
     ): Bitmap {
         val size = sizePx.coerceAtLeast(8)
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
@@ -39,10 +40,7 @@ object RingBitmap {
         val track = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = strokePx
-            color = ColorUtils.setAlphaComponent(
-                colorArgb,
-                (QuotaColors.TrackAlpha * 255).toInt(),
-            )
+            color = trackArgb
         }
         canvas.drawArc(bounds, 0f, 360f, false, track)
 
@@ -60,13 +58,16 @@ object RingBitmap {
             val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = centerTextColorArgb
                 textAlign = Paint.Align.LEFT
-                textSize = size * 0.35f
-                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                textSize = size * 0.40f
+                typeface = Typeface.create("sans-serif", Typeface.BOLD)
             }
             val metrics = text.fontMetrics
             val baseline = size / 2f - (metrics.ascent + metrics.descent) / 2f
             if (centerText.all(Char::isDigit)) {
-                val unit = Paint(text).apply { textSize = size * 0.15f }
+                val unit = Paint(text).apply {
+                    textSize = size * 0.20f
+                    typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                }
                 val width = text.measureText(centerText) + unit.measureText("%")
                 val left = (size - width) / 2f
                 canvas.drawText(centerText, left, baseline, text)

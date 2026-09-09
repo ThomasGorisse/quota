@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.ColorFilter
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
@@ -34,6 +35,8 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.gorisse.thomas.quota.MainActivity
+import com.gorisse.thomas.quota.R
+import com.gorisse.thomas.quota.data.DisplayMode
 import com.gorisse.thomas.quota.data.Provider
 import com.gorisse.thomas.quota.data.ProviderId
 import com.gorisse.thomas.quota.data.Severity
@@ -43,6 +46,7 @@ import com.gorisse.thomas.quota.data.Window
 import com.gorisse.thomas.quota.ui.formatAge
 import com.gorisse.thomas.quota.ui.formatResetsInShort
 import com.gorisse.thomas.quota.ui.theme.QuotaColors
+import com.gorisse.thomas.quota.ui.theme.accent
 import com.gorisse.thomas.quota.ui.theme.argb
 
 /**
@@ -54,7 +58,10 @@ class QuotaWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val snapshot = StatusRepository.get(context).snapshot.value
+        val repository = StatusRepository.get(context)
+        val snapshot = repository.snapshot.value
+        // The widget never asks the server anything: it prints the last cached choice.
+        val mode = repository.displayMode.value
         provideContent {
             GlanceTheme {
                 val size = LocalSize.current
@@ -75,9 +82,9 @@ class QuotaWidget : GlanceAppWidget() {
                             style = TextStyle(color = secondaryText(), fontSize = 12.sp),
                         )
                     } else if (wide) {
-                        LargeContent(snapshot)
+                        LargeContent(snapshot, mode)
                     } else {
-                        SmallContent(snapshot)
+                        SmallContent(snapshot, mode)
                     }
                 }
             }
@@ -92,7 +99,7 @@ class QuotaWidget : GlanceAppWidget() {
 
 /** Use the actual host size: the old 110 × 40 breakpoint shrank even spacious cells. */
 @Composable
-private fun SmallContent(snapshot: Snapshot) {
+private fun SmallContent(snapshot: Snapshot, mode: DisplayMode) {
     val stale = snapshot.isStale()
     val height = LocalSize.current.height.value
     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
@@ -100,11 +107,11 @@ private fun SmallContent(snapshot: Snapshot) {
             val window = snapshot.status.providers[id.key]?.sessionWindow()
             Column(GlanceModifier.defaultWeight(), horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
                 if (height >= 64) {
-                    MiniRing(window, stale, diameterDp = 42)
-                    Text(id.displayName, style = TextStyle(color = primaryText(), fontSize = 12.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+                    MiniRing(window, stale, diameterDp = 42, mode = mode)
+                    ProviderLabel(id)
                 } else {
-                    Text(id.displayName, style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 1)
-                    Text(window?.let { "${it.remaining}%" } ?: "—",
+                    ProviderLabel(id)
+                    Text(window?.let { "${it.shown(mode)}%" } ?: "—",
                         style = TextStyle(color = primaryText(), fontSize = 16.sp, fontWeight = FontWeight.Bold), maxLines = 1)
                 }
             }
@@ -114,49 +121,56 @@ private fun SmallContent(snapshot: Snapshot) {
 
 /** Four primary windows stay equal; reserve is a secondary line, as on the dashboard. */
 @Composable
-private fun LargeContent(snapshot: Snapshot) {
+private fun LargeContent(snapshot: Snapshot, mode: DisplayMode) {
     val stale = snapshot.isStale()
-    val diameter = minOf((LocalSize.current.width.value - 48) / 4, LocalSize.current.height.value - 118)
-        .toInt().coerceIn(32, 52)
+    // Two rings per provider at most: five rings on a 7 cm cell rendered ~6sp values.
+    val columns = snapshot.orderedProviders().maxOfOrNull { (_, p) -> p.widgetWindows(2).size } ?: 1
+    // The cell also has to fit a header, a provider name, a label, a reset time and the
+    // footer: give the ring what is left, not what the width alone would allow.
+    val diameter = minOf(
+        (LocalSize.current.width.value - 56) / (columns * 2),
+        LocalSize.current.height.value - 100,
+    ).toInt().coerceIn(36, 58)
     Column(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.Vertical.CenterVertically) {
         Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
             Text("Quota", style = TextStyle(color = primaryText(), fontSize = 14.sp, fontWeight = FontWeight.Bold))
             Spacer(GlanceModifier.size(8.dp))
-            Text("Updated " + formatAge(snapshot.ageSeconds()),
-                modifier = GlanceModifier.defaultWeight(), style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 1)
+            // "42 s ago · left" says both how fresh it is and which number it is printing,
+            // on the one line a 4 x 2 cell can spare.
+            Text(
+                formatAge(snapshot.ageSeconds()) + " · " + if (mode.isUsed) "used" else "left",
+                modifier = GlanceModifier.defaultWeight(),
+                style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 1,
+            )
             SeverityDot(snapshot.severity())
         }
-        Spacer(GlanceModifier.size(8.dp))
+        Spacer(GlanceModifier.size(6.dp))
         Row(GlanceModifier.fillMaxWidth()) {
             snapshot.orderedProviders().forEach { (name, provider) ->
                 Column(GlanceModifier.defaultWeight(), horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
                     Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
+                        ProviderMark(ProviderId.of(name.lowercase()))
+                        Spacer(GlanceModifier.size(5.dp))
                         Text(name, style = TextStyle(color = primaryText(), fontSize = 13.sp, fontWeight = FontWeight.Bold))
                         provider.plan?.let {
                             Text(" · " + it.replaceFirstChar(Char::uppercase),
                                 style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 1)
                         }
                     }
-                    Spacer(GlanceModifier.size(4.dp))
+                    Spacer(GlanceModifier.size(3.dp))
                     Row(GlanceModifier.fillMaxWidth()) {
-                        provider.windows.filter { it.id != "reserve" }.take(2).forEach { window ->
+                        provider.widgetWindows(2).forEach { window ->
                             Column(GlanceModifier.defaultWeight(), horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
-                                MiniRing(window, stale, diameter)
-                                Text(window.label, style = TextStyle(color = primaryText(), fontSize = 12.sp), maxLines = 1)
-                                Text(formatResetsInShort(window.resetsIn()), style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 1)
+                                MiniRing(window, stale, diameter, mode)
+                                Spacer(GlanceModifier.size(2.dp))
+                                Text(window.label, style = TextStyle(color = primaryText(), fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium), maxLines = 1)
+                                Text(formatResetsInShort(window.resetsIn()),
+                                    style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 1)
                             }
                         }
                     }
                 }
-            }
-        }
-        Spacer(GlanceModifier.size(8.dp))
-        val reserve = snapshot.status.providers[ProviderId.CODEX.key]?.windows?.firstOrNull { it.id == "reserve" }
-        Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
-            Text("Remaining", GlanceModifier.defaultWeight(), style = TextStyle(color = secondaryText(), fontSize = 11.sp))
-            reserve?.let {
-                Text("Reserve ${it.remaining}% · ${formatResetsInShort(it.resetsIn())}",
-                    style = TextStyle(color = primaryText(), fontSize = 11.sp), maxLines = 1)
             }
         }
     }
@@ -176,6 +190,7 @@ private fun SeverityDot(severity: Severity) {
                 colorArgb = severity.argb,
                 centerText = null,
                 centerTextColorArgb = 0,
+                trackArgb = 0,
             ),
         ),
         contentDescription = severity.wire,
@@ -184,7 +199,7 @@ private fun SeverityDot(severity: Severity) {
 }
 
 @Composable
-private fun MiniRing(window: Window?, stale: Boolean, diameterDp: Int) {
+private fun MiniRing(window: Window?, stale: Boolean, diameterDp: Int, mode: DisplayMode) {
     val context = LocalContext.current
     val density = context.resources.displayMetrics.density
     val severity = when {
@@ -194,25 +209,64 @@ private fun MiniRing(window: Window?, stale: Boolean, diameterDp: Int) {
     val dark = isDarkWidget(context)
     val bitmap = RingBitmap.render(
         sizePx = (diameterDp * density).toInt(),
-        strokePx = diameterDp * density * 0.10f,
-        fraction = (window?.remaining ?: 0) / 100f,
+        strokePx = diameterDp * density * 0.11f,
+        fraction = window?.fraction(mode) ?: 0f,
         colorArgb = severity.argb,
-        centerText = window?.remaining?.toString() ?: "—",
+        centerText = window?.shown(mode)?.toString() ?: "—",
         centerTextColorArgb = if (dark) {
             QuotaColors.TextPrimaryDark.toArgb()
         } else {
             QuotaColors.TextPrimaryLight.toArgb()
         },
+        trackArgb = if (dark) QuotaColors.TrackDark.toArgb() else QuotaColors.TrackLight.toArgb(),
     )
     Image(
         provider = ImageProvider(bitmap),
-        contentDescription = window?.let { "${it.label}: ${it.remaining} percent left${if (stale) ", out of date" else ""}" } ?: "No usage available",
+        contentDescription = window?.let {
+            "${it.label}: ${it.shown(mode)} percent ${if (mode.isUsed) "used" else "left"}" +
+                if (stale) ", out of date" else ""
+        } ?: "No usage available",
         modifier = GlanceModifier.size(diameterDp.dp),
     )
 }
 
-private fun Provider.sessionWindow(): Window? =
-    windows.firstOrNull { it.id == "session" } ?: windows.firstOrNull()
+/** The real brand mark, tinted with the provider accent — the same one the app shows. */
+@Composable
+private fun ProviderMark(id: ProviderId?, sizeDp: Int = 14) {
+    if (id == null) return
+    Image(
+        provider = ImageProvider(
+            if (id == ProviderId.CODEX) R.drawable.ic_brand_openai else R.drawable.ic_brand_claude,
+        ),
+        contentDescription = null,
+        colorFilter = ColorFilter.tint(ColorProvider(id.accent)),
+        modifier = GlanceModifier.size(sizeDp.dp),
+    )
+}
+
+@Composable
+private fun ProviderLabel(id: ProviderId) {
+    Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
+        ProviderMark(id, sizeDp = 12)
+        Spacer(GlanceModifier.size(4.dp))
+        Text(id.displayName, style = TextStyle(color = primaryText(), fontSize = 12.sp,
+            fontWeight = FontWeight.Medium), maxLines = 1)
+    }
+}
+
+private fun Provider.sessionWindow(): Window? = widgetWindows(1).firstOrNull()
+
+/**
+ * The windows worth a ring on a home screen, most relevant first. A provider may report one,
+ * two or three of them — the Pro plan reports only `weekly` and `reserve` — so nothing here
+ * assumes `session` exists, and anything unknown still gets its turn after the known ids.
+ */
+private fun Provider.widgetWindows(max: Int): List<Window> {
+    val rank = listOf("session", "weekly", "reserve")
+    return windows
+        .sortedBy { rank.indexOf(it.id).takeIf { i -> i >= 0 } ?: rank.size }
+        .take(max)
+}
 
 private fun isDarkWidget(context: Context): Boolean {
     val mode = context.resources.configuration.uiMode and
