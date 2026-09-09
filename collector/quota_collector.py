@@ -173,6 +173,17 @@ def collect_codex() -> dict[str, Any]:
     def window(block: Any, window_id: str, label: str) -> dict[str, Any] | None:
         if not isinstance(block, dict):
             return None
+        # The plan decides what the primary window is (Plus: 5 h + weekly; Pro right
+        # after the upgrade: a single 7-day window), so trust the declared duration
+        # over the position.
+        seconds = block.get("limit_window_seconds")
+        if isinstance(seconds, (int, float)) and seconds > 0 and window_id != "reserve":
+            if seconds >= 5 * 86400:
+                window_id, label = "weekly", "Week"
+            elif seconds <= 6 * 3600:
+                window_id, label = "session", "5 h"
+            else:
+                window_id, label = "session", f"{round(seconds / 3600)} h"
         return {
             "id": window_id,
             "label": label,
