@@ -45,7 +45,7 @@ android {
         buildConfig = true
     }
 
-    sourceSets["main"].java.srcDirs("src/main/kotlin")
+    sourceSets.configureEach { java.srcDirs("src/$name/kotlin") }
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"

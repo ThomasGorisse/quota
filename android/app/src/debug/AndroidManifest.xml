@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Debug only: hosts the real widget RemoteViews at exact cell sizes so both
+             layouts can be captured without dragging anything on a launcher. -->
+        <activity
+            android:name=".debug.WidgetPreviewActivity"
+            android:exported="true"
+            android:label="Quota widget preview" />
+    </application>
+</manifest>

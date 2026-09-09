@@ -114,8 +114,13 @@ private fun SmallContent(snapshot: Snapshot) {
 @Composable
 private fun LargeContent(snapshot: Snapshot) {
     val stale = snapshot.isStale()
-    Column(modifier = GlanceModifier.fillMaxSize()) {
+    Column(
+        modifier = GlanceModifier.fillMaxSize(),
+        verticalAlignment = Alignment.Vertical.CenterVertically,
+    ) {
         Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
+            SeverityDot(snapshot.severity())
+            Spacer(GlanceModifier.size(6.dp))
             Text(
                 text = "Quota",
                 style = TextStyle(
@@ -127,16 +132,13 @@ private fun LargeContent(snapshot: Snapshot) {
             Spacer(GlanceModifier.size(6.dp))
             Text(
                 text = formatAge(snapshot.ageSeconds()),
-                style = TextStyle(
-                    color = ColorProvider(snapshot.severity().color),
-                    fontSize = 11.sp,
-                ),
+                style = TextStyle(color = secondaryText(), fontSize = 11.sp),
             )
         }
-        Spacer(GlanceModifier.size(6.dp))
+        Spacer(GlanceModifier.size(8.dp))
         Row(verticalAlignment = Alignment.Vertical.Top) {
             snapshot.orderedProviders().forEachIndexed { index, (name, provider) ->
-                if (index > 0) Spacer(GlanceModifier.size(12.dp))
+                if (index > 0) Spacer(GlanceModifier.size(16.dp))
                 Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
                     Text(
                         text = name,
@@ -154,7 +156,7 @@ private fun LargeContent(snapshot: Snapshot) {
                         provider.windows.forEachIndexed { windowIndex, window ->
                             if (windowIndex > 0) Spacer(GlanceModifier.size(6.dp))
                             Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
-                                MiniRing(window = window, stale = stale, diameterDp = 44)
+                                MiniRing(window = window, stale = stale, diameterDp = 50)
                                 Text(
                                     text = window.label,
                                     style = TextStyle(color = primaryText(), fontSize = 9.sp),
@@ -170,6 +172,27 @@ private fun LargeContent(snapshot: Snapshot) {
             }
         }
     }
+}
+
+/** Glance has no circle either, so the severity dot is a filled ring bitmap. */
+@Composable
+private fun SeverityDot(severity: Severity) {
+    val density = LocalContext.current.resources.displayMetrics.density
+    val sizePx = (8 * density).toInt()
+    Image(
+        provider = ImageProvider(
+            RingBitmap.render(
+                sizePx = sizePx,
+                strokePx = sizePx / 2f,
+                fraction = 1f,
+                colorArgb = severity.argb,
+                centerText = null,
+                centerTextColorArgb = 0,
+            ),
+        ),
+        contentDescription = severity.wire,
+        modifier = GlanceModifier.size(8.dp),
+    )
 }
 
 @Composable
