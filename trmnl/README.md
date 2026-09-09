@@ -16,7 +16,7 @@ snapshot every 5 minutes, TRMNL redraws on its own refresh schedule.
 
    ```bash
    TOKEN=$(python3 -c "import json,pathlib;print(json.load(open(pathlib.Path.home()/'.quota/config.json'))['token'])")
-   curl -X PUT https://quota.mcp-tools-lab.workers.dev/v1/settings \
+   curl -X PUT https://quota.sceneview.dev/v1/settings \
      -H "Authorization: Bearer $TOKEN" \
      -H 'content-type: application/json' \
      -d '{"trmnl_webhook_url":"https://trmnl.com/api/custom_plugins/<PLUGIN_SETTINGS_UUID>"}'

@@ -27,7 +27,7 @@ CONFIG_DIR = HOME / ".quota"
 CONFIG_PATH = CONFIG_DIR / "config.json"
 PAIRING_PATH = CONFIG_DIR / "pairing.txt"
 
-DEFAULT_WORKER_URL = "https://quota.mcp-tools-lab.workers.dev"
+DEFAULT_WORKER_URL = "https://quota.sceneview.dev"
 
 CLAUDE_USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
 CLAUDE_KEYCHAIN_SERVICE = "Claude Code-credentials"

@@ -6,7 +6,7 @@ tiny backend, many thin clients.
 
 ## Live
 
-- Worker: **https://quota.mcp-tools-lab.workers.dev** (Cloudflare, KV namespace `QUOTA`,
+- Worker: **https://quota.sceneview.dev** (Cloudflare, KV namespace `QUOTA`,
   cron `*/5 * * * *`). Deploy with `cd worker && npx wrangler deploy`.
 - Dashboard: same host, `/#t=<token>`. The collector prints that pairing URL on first run
   and writes it to `~/.quota/pairing.txt` — it carries the device token, so treat it as a
