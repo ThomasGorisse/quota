@@ -35,6 +35,33 @@ class QuotaApi(private val json: Json = DefaultJson) {
         }
     }
 
+    /**
+     * `PUT /v1/settings {"display": …}` — the one setting this app writes, so the same
+     * choice shows on the web dashboard and on the TRMNL screen.
+     */
+    suspend fun setDisplay(pairing: Pairing, mode: DisplayMode): Unit = withContext(Dispatchers.IO) {
+        val url = URL(pairing.host.trimEnd('/') + "/v1/settings")
+        val connection = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "PUT"
+            setRequestProperty("Authorization", "Bearer ${pairing.token}")
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Accept", "application/json")
+            connectTimeout = 10_000
+            readTimeout = 10_000
+            doOutput = true
+        }
+        try {
+            connection.outputStream.use { it.write("""{"display":"${mode.wire}"}""".toByteArray()) }
+            val code = connection.responseCode
+            if (code == HttpURLConnection.HTTP_UNAUTHORIZED || code == HttpURLConnection.HTTP_FORBIDDEN) {
+                throw UnauthorizedException()
+            }
+            if (code !in 200..299) throw IOException("Server returned HTTP $code")
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     companion object {
         val DefaultJson = Json {
             ignoreUnknownKeys = true

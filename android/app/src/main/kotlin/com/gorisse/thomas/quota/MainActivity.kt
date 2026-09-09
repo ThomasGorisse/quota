@@ -33,6 +33,7 @@ class MainActivity : ComponentActivity() {
                 val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
                 val error by viewModel.error.collectAsStateWithLifecycle()
                 val now by viewModel.now.collectAsStateWithLifecycle()
+                val displayMode by viewModel.displayMode.collectAsStateWithLifecycle()
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -51,6 +52,8 @@ class MainActivity : ComponentActivity() {
                             error = error,
                             onRefresh = viewModel::refresh,
                             onUnpair = viewModel::unpair,
+                            mode = displayMode,
+                            onModeChange = viewModel::setDisplayMode,
                             modifier = insets,
                         )
                     } else {

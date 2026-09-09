@@ -16,9 +16,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gorisse.thomas.quota.data.*
+import com.gorisse.thomas.quota.data.DisplayMode
 import com.gorisse.thomas.quota.ui.theme.*
 import java.time.Instant
 
@@ -28,6 +32,8 @@ fun HomeScreen(
     snapshot: Snapshot?, nowMillis: Long, refreshing: Boolean, error: String?,
     onRefresh: () -> Unit, onUnpair: () -> Unit, modifier: Modifier = Modifier,
     demo: Boolean = false,
+    mode: DisplayMode = DisplayMode.REMAINING,
+    onModeChange: (DisplayMode) -> Unit = {},
 ) {
     val stale = snapshot?.isStale(nowMillis) ?: true
     val now = Instant.ofEpochMilli(nowMillis)
@@ -42,7 +48,9 @@ fun HomeScreen(
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Header(snapshot?.severity(nowMillis) ?: Severity.STALE,
             snapshot?.let { "Updated " + formatAge(it.ageSeconds(nowMillis)) } ?: "Waiting for first update",
-            demo, onUnpair = { confirmUnpair = true })
+            demo, onUnpair = { confirmUnpair = true }, mode = mode, onModeChange = onModeChange,
+            // Nothing to switch between until there is a payload, and the write would fail.
+            showToggle = snapshot != null)
         PullToRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, modifier = Modifier.weight(1f)) {
             when {
                 snapshot == null && error != null -> ErrorState(error, onRefresh, onUnpair)
@@ -62,11 +70,12 @@ fun HomeScreen(
                         }
                     }
                     items(snapshot.orderedProviders(), key = { it.first }) { (name, provider) ->
-                        ProviderCard(name, provider, snapshot, stale, now)
+                        ProviderCard(name, provider, snapshot, stale, now, mode)
                     }
                     item {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Every number is what’s left.", style = MaterialTheme.typography.bodySmall,
+                            Text(if (mode.isUsed) "Every number is what’s used." else "Every number is what’s left.",
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text("Pull to refresh", style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -79,8 +88,14 @@ fun HomeScreen(
 }
 
 @Composable
-private fun Header(severity: Severity, ageLabel: String, demo: Boolean, onUnpair: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 0.dp, bottom = 8.dp)) {
+private fun Header(
+    severity: Severity, ageLabel: String, demo: Boolean, onUnpair: () -> Unit,
+    mode: DisplayMode, onModeChange: (DisplayMode) -> Unit, showToggle: Boolean,
+) {
+    Column(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             QuotaWordmark(Modifier.weight(1f))
             if (demo) Text("Demo", style = MaterialTheme.typography.labelMedium,
@@ -91,8 +106,43 @@ private fun Header(severity: Severity, ageLabel: String, demo: Boolean, onUnpair
                     Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        Text(ageLabel, style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier)
+        Row(Modifier.fillMaxWidth().padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(ageLabel, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (showToggle) DisplayToggle(mode, onModeChange)
+        }
+    }
+}
+
+/** The web dashboard's Left / Used control, in Compose: two segments in one rounded pill. */
+@Composable
+private fun DisplayToggle(mode: DisplayMode, onModeChange: (DisplayMode) -> Unit) {
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = .07f))
+            .padding(2.dp)
+            .semantics { contentDescription = "Show percentages as" },
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        listOf(DisplayMode.REMAINING to "Left", DisplayMode.USED to "Used").forEach { (value, label) ->
+            val selected = value == mode
+            Surface(
+                onClick = { onModeChange(value) },
+                selected = selected,
+                shape = RoundedCornerShape(10.dp),
+                color = if (selected) MaterialTheme.colorScheme.surface else Color.Transparent,
+                border = if (selected) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null,
+            ) {
+                Text(
+                    label,
+                    Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (selected) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
@@ -113,7 +163,10 @@ private fun SeverityPill(severity: Severity) {
 }
 
 @Composable
-private fun ProviderCard(name: String, provider: Provider, snapshot: Snapshot, stale: Boolean, now: Instant) {
+private fun ProviderCard(
+    name: String, provider: Provider, snapshot: Snapshot, stale: Boolean, now: Instant,
+    mode: DisplayMode,
+) {
     Card(shape = RoundedCornerShape(20.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -136,7 +189,7 @@ private fun ProviderCard(name: String, provider: Provider, snapshot: Snapshot, s
                     val diameter = ((maxWidth - 24.dp) / 2).coerceAtMost(120.dp)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         windows.forEach { window ->
-                            RingGauge(window, stale, Modifier.weight(1f), diameter, window.resetsIn(now))
+                            RingGauge(window, stale, Modifier.weight(1f), diameter, window.resetsIn(now), mode = mode)
                         }
                     }
                 }
@@ -149,7 +202,8 @@ private fun ProviderCard(name: String, provider: Provider, snapshot: Snapshot, s
                         Text(formatResetsIn(window.resetsIn(now)), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    RingGauge(window, stale, diameter = 72.dp, resetsIn = window.resetsIn(now), showDetails = false)
+                    RingGauge(window, stale, diameter = 72.dp, resetsIn = window.resetsIn(now),
+                        showDetails = false, mode = mode)
                 }
             }
             ProviderHistory(name.lowercase(), snapshot.status.history, stale, now)

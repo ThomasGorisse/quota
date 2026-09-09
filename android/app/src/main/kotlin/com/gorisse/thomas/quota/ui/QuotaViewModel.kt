@@ -3,6 +3,7 @@ package com.gorisse.thomas.quota.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.gorisse.thomas.quota.data.DisplayMode
 import com.gorisse.thomas.quota.data.Pairing
 import com.gorisse.thomas.quota.data.Snapshot
 import com.gorisse.thomas.quota.data.StatusRepository
@@ -20,6 +21,9 @@ class QuotaViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = StatusRepository.get(application)
 
     val snapshot: StateFlow<Snapshot?> = repository.snapshot
+
+    /** Left or Used — the same value the widget reads out of the cache. */
+    val displayMode: StateFlow<DisplayMode> = repository.displayMode
 
     private val _paired = MutableStateFlow(repository.isPaired || repository.isDemo)
     val paired: StateFlow<Boolean> = _paired.asStateFlow()
@@ -65,6 +69,17 @@ class QuotaViewModel(application: Application) : AndroidViewModel(application) {
         _paired.value = false
         _error.value = null
         QuotaWidgetUpdater.updateAll(getApplication())
+    }
+
+    fun setDisplayMode(mode: DisplayMode) {
+        viewModelScope.launch {
+            if (repository.setDisplayMode(mode)) {
+                _error.value = null
+            } else {
+                _error.value = "Couldn\u2019t save that on your other screens."
+            }
+            QuotaWidgetUpdater.updateAll(getApplication())
+        }
     }
 
     fun refresh() {

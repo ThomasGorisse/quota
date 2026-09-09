@@ -3,6 +3,7 @@ package com.gorisse.thomas.quota.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gorisse.thomas.quota.data.DisplayMode
 import com.gorisse.thomas.quota.data.Severity
 import com.gorisse.thomas.quota.data.Window
 import com.gorisse.thomas.quota.ui.theme.Dimens
@@ -33,8 +35,10 @@ import com.gorisse.thomas.quota.ui.theme.color
 import java.time.Duration
 
 /**
- * The gauge of DESIGN.md: a ring whose swept part is what is **left**, the remaining
- * percentage in the centre, the window label and its reset time below.
+ * The gauge of DESIGN.md: a ring whose swept part is what is **left**, that percentage in
+ * the centre, the window label and its reset time below. In [DisplayMode.USED] the same
+ * ring grows with usage and prints the spent percentage instead — the colour does not move,
+ * severity always runs on the used percentage.
  *
  * The sweep is the only thing that animates, 400 ms ease-out, on value change only.
  */
@@ -46,11 +50,13 @@ fun RingGauge(
     diameter: Dp = 112.dp,
     resetsIn: Duration? = window.resetsIn(),
     showDetails: Boolean = true,
+    mode: DisplayMode = DisplayMode.REMAINING,
 ) {
     val severity = if (stale) Severity.STALE else window.severity
     val color = severity.color
+    val word = if (mode.isUsed) "used" else "left"
     val sweep by animateFloatAsState(
-        targetValue = window.remaining / 100f,
+        targetValue = window.fraction(mode),
         animationSpec = tween(durationMillis = 400),
         label = "ring-${window.id}",
     )
@@ -58,7 +64,7 @@ fun RingGauge(
     Column(
         modifier = modifier.clearAndSetSemantics {
             contentDescription =
-                "${window.label}: ${window.remaining} percent left, ${formatResetsIn(resetsIn)}${if (stale) ", out of date" else ""}"
+                "${window.label}: ${window.shown(mode)} percent $word, ${formatResetsIn(resetsIn)}${if (stale) ", out of date" else ""}"
         },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Dimens.Grid),
@@ -78,9 +84,9 @@ fun RingGauge(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        text = "${window.remaining}",
+                        text = "${window.shown(mode)}",
                         style = MaterialTheme.typography.displayMedium,
-                        fontSize = (diameter.value * 0.34f).sp,
+                        fontSize = (diameter.value * 0.36f).sp,
                         lineHeight = (diameter.value * 0.36f).sp,
                         letterSpacing = (-1.5).sp,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -90,8 +96,13 @@ fun RingGauge(
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(bottom = (diameter.value * .025f).dp))
                 }
-                Text("left", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // The mode has to be readable at a glance, not guessed from the number.
+                Text(
+                    text = word,
+                    fontSize = (diameter.value * 0.135f).sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
         if (showDetails) Text(
@@ -106,6 +117,7 @@ fun RingGauge(
 @Composable
 private fun Ring(fraction: Float, color: Color, diameter: Dp, stroke: Dp) {
     val strokePx = with(LocalDensity.current) { stroke.toPx() }
+    val track = if (isSystemInDarkTheme()) QuotaColors.TrackDark else QuotaColors.TrackLight
     Canvas(modifier = Modifier.size(diameter)) {
         val inset = strokePx / 2f
         val arcSize = androidx.compose.ui.geometry.Size(
@@ -114,7 +126,7 @@ private fun Ring(fraction: Float, color: Color, diameter: Dp, stroke: Dp) {
         )
         val topLeft = androidx.compose.ui.geometry.Offset(inset, inset)
         drawArc(
-            color = color.copy(alpha = QuotaColors.TrackAlpha),
+            color = track,
             startAngle = 0f,
             sweepAngle = 360f,
             useCenter = false,

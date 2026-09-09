@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.gorisse.thomas.quota.data.DisplayMode
 import com.gorisse.thomas.quota.data.ProviderId
 import com.gorisse.thomas.quota.ui.theme.QuotaColors
 import com.gorisse.thomas.quota.ui.theme.accent
@@ -23,18 +24,22 @@ import java.time.Instant
 private data class HistoryPoint(val time: Long, val session: Float?, val weekly: Float?)
 
 @Composable
-fun ProviderHistory(provider: String, history: List<JsonElement>, stale: Boolean, now: Instant) {
+fun ProviderHistory(
+    provider: String, history: List<JsonElement>, stale: Boolean, now: Instant,
+    mode: DisplayMode = DisplayMode.REMAINING,
+) {
     val end = now.toEpochMilli()
     val start = end - 86_400_000L
-    val points = remember(provider, history) {
+    val points = remember(provider, history, mode) {
         history.mapNotNull { element ->
             val obj = element as? JsonObject ?: return@mapNotNull null
             val time = (obj["t"] as? JsonPrimitive)?.contentOrNull
                 ?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
                 ?: return@mapNotNull null
-            fun remaining(window: String) = (obj["$provider.$window"] as? JsonPrimitive)
-                ?.floatOrNull?.takeIf { it.isFinite() }?.let { (100f - it).coerceIn(0f, 100f) }
-            HistoryPoint(time, remaining("session"), remaining("weekly"))
+            fun shown(window: String) = (obj["$provider.$window"] as? JsonPrimitive)
+                ?.floatOrNull?.takeIf { it.isFinite() }
+                ?.let { (if (mode.isUsed) it else 100f - it).coerceIn(0f, 100f) }
+            HistoryPoint(time, shown("session"), shown("weekly"))
         }.sortedBy { it.time }
     }.filter { it.time in start..end }
     val hasData = points.count { it.session != null } >= 2 || points.count { it.weekly != null } >= 2
@@ -47,7 +52,8 @@ fun ProviderHistory(provider: String, history: List<JsonElement>, stale: Boolean
             Text("Last 24 hours", style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (hasData) Canvas(Modifier.weight(1f).height(32.dp).semantics {
-                contentDescription = "Remaining quota over the last 24 hours. Solid line: 5 hour window. Dashed line: week."
+                contentDescription = "Quota ${if (mode.isUsed) "used" else "remaining"} over the last 24 hours. " +
+                    "Solid line: 5 hour window. Dashed line: week."
             }) {
                 drawLine(line, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
                 listOf(false, true).forEach { weekly ->

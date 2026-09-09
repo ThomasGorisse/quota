@@ -18,8 +18,29 @@ data class StatusResponse(
     val stale: Boolean = false,
     val providers: Map<String, Provider> = emptyMap(),
     val severity: String = Severity.OK.wire,
+    /** How every client prints a percentage. Absent on older workers: assume remaining. */
+    val display: String = DisplayMode.REMAINING.wire,
     val history: List<JsonElement> = emptyList(),
-)
+) {
+    val displayMode: DisplayMode get() = DisplayMode.ofWire(display)
+}
+
+/**
+ * `remaining` prints what is left and fills the ring as capacity drains; `used` prints what
+ * has been spent and fills the ring as it is spent. Thresholds always run on the used
+ * percentage, so severity colours never move with this setting.
+ */
+enum class DisplayMode(val wire: String) {
+    REMAINING("remaining"),
+    USED("used");
+
+    val isUsed: Boolean get() = this == USED
+
+    companion object {
+        fun ofWire(value: String?): DisplayMode =
+            entries.firstOrNull { it.wire == value } ?: REMAINING
+    }
+}
 
 @Serializable
 data class Provider(
@@ -39,6 +60,12 @@ data class Window(
     val remaining: Int get() = (100 - percent).coerceIn(0, 100)
 
     val severity: Severity get() = Severity.ofUsedPercent(percent)
+
+    /** The number to print in this mode: what is left, or what has been spent. */
+    fun shown(mode: DisplayMode): Int = if (mode.isUsed) percent.coerceIn(0, 100) else remaining
+
+    /** How much of the ring is swept: it drains in remaining mode, it grows in used mode. */
+    fun fraction(mode: DisplayMode): Float = shown(mode) / 100f
 
     /** Time until this window resets, or null when the payload carries no reset date. */
     fun resetsIn(now: Instant = Instant.now()): Duration? {
@@ -94,6 +121,8 @@ data class Snapshot(
 
     fun severity(nowMillis: Long = System.currentTimeMillis()): Severity =
         if (isStale(nowMillis)) Severity.STALE else Severity.ofWire(status.severity)
+
+    val displayMode: DisplayMode get() = status.displayMode
 
     /** Providers in a stable order: the ones we know about first, then anything new. */
     fun orderedProviders(): List<Pair<String, Provider>> {
