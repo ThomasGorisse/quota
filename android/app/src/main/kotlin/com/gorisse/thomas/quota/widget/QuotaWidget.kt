@@ -2,7 +2,6 @@ package com.gorisse.thomas.quota.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,6 +22,7 @@ import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.color.ColorProvider as DayNightColorProvider
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
@@ -222,8 +222,6 @@ private fun SeverityDot(severity: Severity) {
                 strokePx = sizePx / 2f,
                 fraction = 1f,
                 colorArgb = severity.argb,
-                centerText = null,
-                centerTextColorArgb = 0,
                 trackArgb = 0,
             ),
         ),
@@ -240,28 +238,50 @@ private fun MiniRing(window: Window?, stale: Boolean, diameterDp: Int, mode: Dis
         window == null || stale -> Severity.STALE
         else -> window.severity
     }
-    val dark = isDarkWidget(context)
     val bitmap = RingBitmap.render(
         sizePx = (diameterDp * density).toInt(),
         strokePx = diameterDp * density * 0.11f,
         fraction = window?.fraction(mode) ?: 0f,
         colorArgb = severity.argb,
-        centerText = window?.shown(mode)?.toString() ?: "—",
-        centerTextColorArgb = if (dark) {
-            QuotaColors.TextPrimaryDark.toArgb()
-        } else {
-            QuotaColors.TextPrimaryLight.toArgb()
-        },
-        trackArgb = if (dark) QuotaColors.TrackDark.toArgb() else QuotaColors.TrackLight.toArgb(),
     )
-    Image(
-        provider = ImageProvider(bitmap),
-        contentDescription = window?.let {
-            "${it.label}: ${it.shown(mode)} percent ${if (mode.isUsed) "used" else "left"}" +
-                if (stale) ", out of date" else ""
-        } ?: "No usage available",
+    val shown = window?.shown(mode)
+    Box(
         modifier = GlanceModifier.size(diameterDp.dp),
-    )
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            provider = ImageProvider(bitmap),
+            contentDescription = window?.let {
+                "${it.label}: ${it.shown(mode)} percent ${if (mode.isUsed) "used" else "left"}" +
+                    if (stale) ", out of date" else ""
+            } ?: "No usage available",
+            modifier = GlanceModifier.size(diameterDp.dp),
+        )
+        // The number lives outside the bitmap so it follows the theme: see [RingBitmap].
+        if (shown == null) {
+            Text(
+                "\u2014",
+                style = TextStyle(color = primaryText(), fontSize = (diameterDp * 0.34f).sp,
+                    fontWeight = FontWeight.Bold),
+                maxLines = 1,
+            )
+        } else {
+            Row(verticalAlignment = Alignment.Vertical.Bottom) {
+                Text(
+                    shown.toString(),
+                    style = TextStyle(color = primaryText(), fontSize = (diameterDp * 0.34f).sp,
+                        fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                )
+                Text(
+                    "%",
+                    style = TextStyle(color = primaryText(), fontSize = (diameterDp * 0.19f).sp,
+                        fontWeight = FontWeight.Medium),
+                    maxLines = 1,
+                )
+            }
+        }
+    }
 }
 
 /** The real brand mark, tinted with the provider accent — the same one the app shows. */
@@ -290,12 +310,6 @@ private fun Provider.widgetWindows(max: Int): List<Window> {
     return windows
         .sortedBy { rank.indexOf(it.id).takeIf { i -> i >= 0 } ?: rank.size }
         .take(max)
-}
-
-private fun isDarkWidget(context: Context): Boolean {
-    val mode = context.resources.configuration.uiMode and
-        android.content.res.Configuration.UI_MODE_NIGHT_MASK
-    return mode == android.content.res.Configuration.UI_MODE_NIGHT_YES
 }
 
 private fun surface() = DayNightColorProvider(

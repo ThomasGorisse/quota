@@ -35,6 +35,14 @@ object QuotaColors {
     val TrackDark = Color(0xFF374151)
     val TrackLight = Color(0xFFD8DCE3)
 
+    /**
+     * The widget track. A widget ring is a baked bitmap the launcher never redraws on a
+     * dark/light flip, so it cannot pick between [TrackDark] and [TrackLight]: this one
+     * neutral is translucent and composites to roughly either over the matching surface
+     * (#D2D8E1 over white, #4A5461 over [SurfaceDark]).
+     */
+    val TrackNeutral = Color(0x6B94A3B8)
+
     @Deprecated("The track is a solid neutral now, not a tint of the value colour.")
     const val TrackAlpha = 0.15f
 }

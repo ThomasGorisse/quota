@@ -4,13 +4,21 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
-import android.graphics.Typeface
-import androidx.core.graphics.ColorUtils
+import com.gorisse.thomas.quota.ui.theme.QuotaColors
+import androidx.compose.ui.graphics.toArgb
 
 /**
  * Glance has no arc primitive, so every widget ring is a bitmap drawn here and handed to
  * `Image(ImageProvider(bitmap))`. The bitmap is sized in pixels for the cell it will occupy;
  * the caller converts dp with the widget's density.
+ *
+ * **Nothing drawn here may depend on the day/night theme.** A bitmap is baked into the
+ * `RemoteViews` the launcher keeps, and the launcher does not redraw it when the system
+ * flips dark/light: the card background is a `ColorProvider` and flips instantly, so any
+ * theme-dependent pixel in the bitmap ends up on the wrong background (white numbers on a
+ * white card). The percentage is therefore a Glance `Text` on top of this bitmap, not a
+ * `drawText`, and the track is a translucent neutral that composites correctly over both
+ * surfaces instead of a colour picked per theme.
  */
 object RingBitmap {
 
@@ -18,18 +26,16 @@ object RingBitmap {
      * @param sizePx outer diameter in pixels
      * @param strokePx ring thickness in pixels (8 dp per DESIGN.md, converted by the caller)
      * @param fraction how much is **left**, 0..1
-     * @param colorArgb severity colour, already resolved (grey when stale)
-     * @param centerText the percentage to print, or null for the smallest cells
-     * @param trackArgb the empty part of the ring — a neutral grey, so the proportion reads
+     * @param colorArgb severity colour, already resolved (grey when stale) — a semantic hue
+     *   that means the same thing in both themes, so it is safe to bake
+     * @param trackArgb the empty part of the ring; the default is translucent on purpose
      */
     fun render(
         sizePx: Int,
         strokePx: Float,
         fraction: Float,
         colorArgb: Int,
-        centerText: String?,
-        centerTextColorArgb: Int,
-        trackArgb: Int = ColorUtils.setAlphaComponent(colorArgb, 38),
+        trackArgb: Int = QuotaColors.TrackNeutral.toArgb(),
     ): Bitmap {
         val size = sizePx.coerceAtLeast(8)
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
@@ -37,12 +43,14 @@ object RingBitmap {
         val inset = strokePx / 2f
         val bounds = RectF(inset, inset, size - inset, size - inset)
 
-        val track = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = strokePx
-            color = trackArgb
+        if (trackArgb != 0) {
+            val track = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = strokePx
+                color = trackArgb
+            }
+            canvas.drawArc(bounds, 0f, 360f, false, track)
         }
-        canvas.drawArc(bounds, 0f, 360f, false, track)
 
         if (fraction > 0f) {
             val value = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -52,29 +60,6 @@ object RingBitmap {
                 color = colorArgb
             }
             canvas.drawArc(bounds, -90f, 360f * fraction.coerceIn(0f, 1f), false, value)
-        }
-
-        if (centerText != null) {
-            val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = centerTextColorArgb
-                textAlign = Paint.Align.LEFT
-                textSize = size * 0.40f
-                typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            }
-            val metrics = text.fontMetrics
-            val baseline = size / 2f - (metrics.ascent + metrics.descent) / 2f
-            if (centerText.all(Char::isDigit)) {
-                val unit = Paint(text).apply {
-                    textSize = size * 0.20f
-                    typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-                }
-                val width = text.measureText(centerText) + unit.measureText("%")
-                val left = (size - width) / 2f
-                canvas.drawText(centerText, left, baseline, text)
-                canvas.drawText("%", left + text.measureText(centerText), baseline, unit)
-            } else {
-                canvas.drawText(centerText, (size - text.measureText(centerText)) / 2f, baseline, text)
-            }
         }
         return bitmap
     }
