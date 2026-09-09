@@ -18,6 +18,10 @@
     <header class="topbar">
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span><h1>Quota</h1><span class="tagline">Your AI usage at a glance</span></div>
       <div class="status-group" id="status-group" hidden>
+        <div class="segmented" id="display-toggle" role="group" aria-label="Show percentages as" hidden>
+          <button type="button" data-mode="remaining" aria-pressed="true">Left</button>
+          <button type="button" data-mode="used" aria-pressed="false">Used</button>
+        </div>
         <span class="demo-badge" id="demo-badge" hidden>Demo</span>
         <span class="status-pill" id="severity" role="status">Connecting</span>
         <span class="updated" id="updated"></span>
@@ -40,10 +44,10 @@
       </section>
     </main>
 
-    <main id="dashboard" class="dashboard" hidden aria-label="Remaining AI capacity">
+    <main id="dashboard" class="dashboard" hidden aria-label="AI capacity remaining">
       <div class="notice" id="notice" role="status" hidden></div>
       <div class="providers" id="providers"></div>
-      <footer class="footer"><span>Every number is what’s <strong>left.</strong></span><span id="refresh-note">Refreshes every 60 s</span></footer>
+      <footer class="footer"><span id="footer-note">Every number is what’s <strong>left.</strong></span><span id="refresh-note">Refreshes every 60 s</span></footer>
     </main>
     <noscript><p class="notice">Enable JavaScript to pair this screen and see your limits.</p></noscript>
   </div>

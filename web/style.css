@@ -33,6 +33,10 @@ h1 { font-size: clamp(1.5rem, 2.3vw, 2rem); line-height: 1; letter-spacing: -.05
 [data-severity="warn"] { --severity: var(--warn); }
 [data-severity="critical"] { --severity: var(--critical); }
 [data-severity="stale"], [data-severity="loading"] { --severity: var(--stale); }
+.segmented { display: inline-flex; gap: 2px; padding: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.segmented button { border: 0; background: none; color: var(--muted); font-size: .8125rem; font-weight: 600; padding: 5px 12px; border-radius: 9px; cursor: pointer; line-height: 1.2; }
+.segmented button:hover { color: var(--text); }
+.segmented button[aria-pressed="true"] { background: color-mix(in srgb, var(--text) 12%, transparent); color: var(--text); }
 .updated, .demo-badge { color: var(--muted); font-size: .8125rem; }
 .demo-badge { border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; }
 .dashboard { display: flex; flex-direction: column; flex: 1; gap: 16px; }
@@ -42,7 +46,7 @@ h1 { font-size: clamp(1.5rem, 2.3vw, 2rem); line-height: 1; letter-spacing: -.05
 .provider-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .provider-identity { display: flex; align-items: center; gap: 12px; }
 .provider-icon { width: clamp(32px, 3vw, 48px); aspect-ratio: 1; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); border-radius: 12px; }
-.provider-icon svg { width: 65%; height: 65%; }
+.provider-icon svg { width: 58%; height: 58%; fill: currentColor; }
 .provider h2 { margin: 0; font-size: clamp(1.25rem, 2vw, 1.875rem); font-weight: 600; letter-spacing: -.035em; }
 .provider-subtitle { color: var(--muted); font-size: .75rem; }
 .plan { color: var(--muted); font-size: .8125rem; border: 1px solid var(--border); padding: 4px 10px; border-radius: 12px; text-transform: capitalize; }
@@ -111,7 +115,10 @@ h1 { font-size: clamp(1.5rem, 2.3vw, 2rem); line-height: 1; letter-spacing: -.05
   .brand { gap: 8px; }
   .status-group { gap: 4px 8px; justify-content: flex-end; }
   .status-pill { padding: 4px 8px; font-size: .75rem; }
-  .updated { width: 100%; text-align: right; font-size: .75rem; }
+  /* Two rows, never three: the toggle joins whichever row still has room. */
+  .segmented { order: 1; padding: 1px; }
+  .segmented button { padding: 3px 8px; font-size: .75rem; }
+  .updated { order: 2; text-align: right; font-size: .75rem; }
   .providers { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .provider { padding: 16px; }
   .provider-header { min-height: 32px; }
