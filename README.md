@@ -4,6 +4,16 @@ Claude and Codex (ChatGPT) rate limits, on every screen you look at: phone widge
 any display, e-ink desk device, watch. One collector on the Mac where the sessions live, one
 tiny backend, many thin clients.
 
+## Live
+
+- Worker: **https://quota.mcp-tools-lab.workers.dev** (Cloudflare, KV namespace `QUOTA`,
+  cron `*/5 * * * *`). Deploy with `cd worker && npx wrangler deploy`.
+- Dashboard: same host, `/#t=<token>`. The collector prints that pairing URL on first run
+  and writes it to `~/.quota/pairing.txt` — it carries the device token, so treat it as a
+  credential.
+- Mac collector: LaunchAgent `com.gorisse.thomas.quota.collector`, every 180 s,
+  `bash collector/install.sh`. Log: `~/.quota/collector.log`.
+
 ## Architecture
 
 ```

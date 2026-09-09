@@ -1,0 +1,85 @@
+{%- comment -%}
+  Quota — TRMNL private plugin, "full" view (800 x 480, 1-bit e-ink).
+
+  Fed by the worker cron every 5 minutes with flat merge variables:
+    claude_session, claude_weekly, codex_session, codex_weekly, codex_reserve  (percent USED)
+    <name>_resets_in ("2h 10m"), severity, updated ("HH:MM"), stale
+
+  The rings show what is LEFT, per docs/DESIGN.md: the number you want to read is
+  the remaining budget. Webhook payloads reach the template either flat or under
+  merge_variables depending on the TRMNL version, so every value is read both ways.
+{%- endcomment -%}
+
+{%- assign c_session = claude_session | default: merge_variables.claude_session | default: 0 -%}
+{%- assign c_weekly = claude_weekly | default: merge_variables.claude_weekly | default: 0 -%}
+{%- assign x_session = codex_session | default: merge_variables.codex_session | default: 0 -%}
+{%- assign x_weekly = codex_weekly | default: merge_variables.codex_weekly | default: 0 -%}
+{%- assign x_reserve = codex_reserve | default: merge_variables.codex_reserve | default: 0 -%}
+{%- assign c_session_in = claude_session_resets_in | default: merge_variables.claude_session_resets_in -%}
+{%- assign c_weekly_in = claude_weekly_resets_in | default: merge_variables.claude_weekly_resets_in -%}
+{%- assign x_session_in = codex_session_resets_in | default: merge_variables.codex_session_resets_in -%}
+{%- assign x_weekly_in = codex_weekly_resets_in | default: merge_variables.codex_weekly_resets_in -%}
+{%- assign updated_at = updated | default: merge_variables.updated | default: '--:--' -%}
+{%- assign is_stale = stale | default: merge_variables.stale | default: false -%}
+{%- assign sev = severity | default: merge_variables.severity | default: 'ok' -%}
+
+{%- comment -%} Remaining, and the arc length for a r=80 ring (circumference 502.65). {%- endcomment -%}
+{%- assign c_left = 100 | minus: c_session -%}
+{%- assign x_left = 100 | minus: x_session -%}
+{%- assign c_dash = c_left | times: 5.0265 -%}
+{%- assign x_dash = x_left | times: 5.0265 -%}
+
+<div class="view view--full">
+  <div class="layout">
+    <div class="grid grid--cols-2" style="align-items: start;">
+
+      <div class="col col--center" style="text-align: center;">
+        <svg viewBox="0 0 200 200" width="196" height="196" role="img"
+             aria-label="Claude session {{ c_left }} percent left">
+          <circle cx="100" cy="100" r="80" fill="none" stroke="black" stroke-width="2"
+                  stroke-dasharray="2 6" />
+          <circle cx="100" cy="100" r="80" fill="none" stroke="black" stroke-width="14"
+                  stroke-linecap="butt" transform="rotate(-90 100 100)"
+                  stroke-dasharray="{{ c_dash }} 502.65" />
+          <text x="100" y="98" text-anchor="middle" font-size="52" font-weight="700">{{ c_left }}%</text>
+          <text x="100" y="126" text-anchor="middle" font-size="18">left</text>
+        </svg>
+        <div class="title" style="font-size: 22px; font-weight: 600;">CLAUDE</div>
+        <div class="label label--underline" style="font-size: 18px;">
+          {% if c_session_in and c_session_in != '' %}resets in {{ c_session_in }}{% else %}5 h window{% endif %}
+        </div>
+        <div class="label" style="font-size: 18px; margin-top: 6px;">
+          Week {{ 100 | minus: c_weekly }}% left{% if c_weekly_in and c_weekly_in != '' %} · {{ c_weekly_in }}{% endif %}
+        </div>
+      </div>
+
+      <div class="col col--center" style="text-align: center;">
+        <svg viewBox="0 0 200 200" width="196" height="196" role="img"
+             aria-label="Codex session {{ x_left }} percent left">
+          <circle cx="100" cy="100" r="80" fill="none" stroke="black" stroke-width="2"
+                  stroke-dasharray="2 6" />
+          <circle cx="100" cy="100" r="80" fill="none" stroke="black" stroke-width="14"
+                  stroke-linecap="butt" transform="rotate(-90 100 100)"
+                  stroke-dasharray="{{ x_dash }} 502.65" />
+          <text x="100" y="98" text-anchor="middle" font-size="52" font-weight="700">{{ x_left }}%</text>
+          <text x="100" y="126" text-anchor="middle" font-size="18">left</text>
+        </svg>
+        <div class="title" style="font-size: 22px; font-weight: 600;">CODEX</div>
+        <div class="label label--underline" style="font-size: 18px;">
+          {% if x_session_in and x_session_in != '' %}resets in {{ x_session_in }}{% else %}5 h window{% endif %}
+        </div>
+        <div class="label" style="font-size: 18px; margin-top: 6px;">
+          Week {{ 100 | minus: x_weekly }}% left · Reserve {{ 100 | minus: x_reserve }}%
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="title_bar">
+    <span class="title">Quota</span>
+    <span class="instance">
+      {{ updated_at }}{% if is_stale %} · STALE{% else %} · {{ sev | upcase }}{% endif %}
+    </span>
+  </div>
+</div>
