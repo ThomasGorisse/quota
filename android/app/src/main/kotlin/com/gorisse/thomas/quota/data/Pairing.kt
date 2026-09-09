@@ -48,6 +48,11 @@ private fun tokenFrom(part: String?): String? = part
  */
 class PairingStore(context: Context) {
 
+    // EncryptedSharedPreferences is deprecated in security-crypto 1.1.0 with no Jetpack
+    // replacement offered. Keep it: on API 26+ it still wraps the token in an AES-GCM key
+    // held by the Android keystore, which is exactly what is wanted, and the alternative
+    // today is hand-rolling the same thing.
+    @Suppress("DEPRECATION")
     private val prefs: SharedPreferences = run {
         val app = context.applicationContext
         val key = MasterKey.Builder(app)
