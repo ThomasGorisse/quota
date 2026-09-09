@@ -1,0 +1,42 @@
+Quota shows how much of your Claude and Codex usage limits is left, as a ring on your home
+screen, your lock screen and your watch. One glance, no app to open.
+
+You run the collector on your own Mac. It reads the usage figures Claude Code and the Codex
+CLI already write locally, works out a percentage, and sends that percentage to a small relay.
+This app pairs with the relay once, by scanning a QR code, and reads your figures back with
+that pairing token. Only percentages and reset times travel: no prompts, no file contents, no
+token counts, no account identifiers.
+
+WHAT YOU SEE
+
+• A ring per usage window: the rolling 5-hour one, the weekly one, and the reserve when your
+  plan has one.
+• Green under 60 % used, amber to 85 %, red above — the same three colours on every screen.
+• How long until each window resets, counting down.
+• How old the reading is, and a plain STALE marker when the collector has stopped reporting.
+
+WIDGETS
+
+• Home screen, medium: the two windows that matter for each provider, big enough to read at
+  arm's length.
+• Home screen, small: one ring per provider.
+• Lock screen: a circular gauge for whichever window is closest to empty, and a two-line
+  rectangular summary.
+• Apple Watch: the full set of rings, plus complications in every shape.
+
+LEFT OR USED
+
+One switch turns every ring around: show the capacity left, or the capacity spent. The setting
+lives on the backend, so the phone, the widgets, the watch and the web dashboard all follow at
+once. The colours never move — a window that is red stays red in both readings.
+
+PRIVACY
+
+No account. No analytics. No crash reporter. No third-party SDK. No tracking. The app talks to
+exactly one host: the one in the pairing URL you gave it. The camera is used only to read that
+pairing QR code, and no image is stored.
+
+WHAT YOU NEED
+
+A Mac where you use Claude Code or the Codex CLI, and the free open-source collector from
+github.com/ThomasGorisse/quota. Without it this app has nothing to show.

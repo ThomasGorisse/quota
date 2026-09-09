@@ -1,0 +1,2 @@
+Two rings on your home screen: how much of your Claude and Codex limits is left, and when
+each window resets. Nothing to open, nothing tracked.
