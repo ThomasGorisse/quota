@@ -27,7 +27,15 @@ object QuotaColors {
     val Claude = Color(0xFFD97757)
     val Codex = Color(0xFF10A37F)
 
-    /** Ring track: the value colour at 15 % opacity, per DESIGN.md. */
+    /**
+     * Ring track. It used to be the value colour at 15 % opacity, which left the empty part
+     * of a nearly-full ring invisible — you could not read the proportion. It is now a
+     * neutral grey with real contrast against both surfaces, like the web dashboard.
+     */
+    val TrackDark = Color(0xFF374151)
+    val TrackLight = Color(0xFFD8DCE3)
+
+    @Deprecated("The track is a solid neutral now, not a tint of the value colour.")
     const val TrackAlpha = 0.15f
 }
 
