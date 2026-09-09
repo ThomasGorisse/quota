@@ -1,0 +1,14 @@
+name = "quota"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+[[kv_namespaces]]
+binding = "QUOTA"
+id = "8b1f0c543af6446da000967297c2e607"
+
+[assets]
+directory = "../web"
+binding = "ASSETS"
+
+[triggers]
+crons = ["*/5 * * * *"]

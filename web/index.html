@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- Placeholder dashboard: replaced by the real web/ build. Keeps the deploy honest. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quota</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 32px;
+        background: #0b0f14;
+        color: #f3f4f6;
+        font: 14px/1.5 -apple-system, system-ui, sans-serif;
+      }
+      h1 { font-size: 20px; font-weight: 600; margin: 0 0 16px; }
+      pre { background: #141a22; border-radius: 20px; padding: 16px; overflow: auto; }
+      .hint { color: #9aa4b2; }
+    </style>
+  </head>
+  <body>
+    <h1>Quota</h1>
+    <pre id="out" class="hint">Loading…</pre>
+    <script>
+      const token = new URLSearchParams(location.hash.slice(1)).get('t');
+      const out = document.getElementById('out');
+      if (!token) {
+        out.textContent = 'No token. Open the pairing URL printed by the collector: /#t=<token>';
+      } else {
+        fetch('/v1/status', { headers: { Authorization: 'Bearer ' + token } })
+          .then((r) => r.json())
+          .then((j) => {
+            out.classList.remove('hint');
+            out.textContent = JSON.stringify(j, null, 2);
+          })
+          .catch((e) => (out.textContent = String(e)));
+      }
+    </script>
+  </body>
+</html>
