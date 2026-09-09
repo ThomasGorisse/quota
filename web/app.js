@@ -4,7 +4,8 @@
   const $ = (selector) => document.querySelector(selector);
   const storageKey = 'quota.token';
   const query = new URLSearchParams(location.search);
-  const demo = query.get('demo') === '1';
+  const demoPro = query.getAll('demo').includes('pro');
+  const demo = query.get('demo') === '1' || demoPro;
   const displayModes = ['remaining', 'used'];
   const providerNames = { claude: 'Claude', codex: 'Codex' };
   const windows = { claude: ['session', 'weekly'], codex: ['session', 'weekly', 'reserve'] };
@@ -25,6 +26,8 @@
   // (Codex's). The worker stores it per device so every screen agrees.
   let displayMode = displayModes.includes(query.get('display')) ? query.get('display') : 'remaining';
   let savingDisplay = false;
+  let showHistory = false;
+  try { showHistory = localStorage.getItem('quota.history') === 'true'; } catch { /* Use the default. */ }
   let demoSnapshot;
   const cards = new Map();
 
@@ -50,12 +53,12 @@
     return {
       collected_at: iso(-42), age_seconds: 42, stale: false,
       providers: {
-        claude: { plan: 'max', windows: [
+        claude: { plan: 'Max', windows: [
           { id: 'session', label: '5 h', percent: 11, resets_at: iso(9000) },
           { id: 'weekly', label: 'Week', percent: 60, resets_at: iso(240000) }
         ], extra: { extra_usage_enabled: false } },
-        codex: { plan: 'plus', windows: [
-          { id: 'session', label: '5 h', percent: 12, resets_at: iso(8227) },
+        codex: { plan: demoPro ? 'Pro 5x' : 'Plus', windows: [
+          ...(!demoPro ? [{ id: 'session', label: '5 h', percent: 12, resets_at: iso(8227) }] : []),
           { id: 'weekly', label: 'Week', percent: 6, resets_at: iso(505388) },
           { id: 'reserve', label: 'Reserve', percent: 10, resets_at: iso(339414) }
         ], extra: { astra_available: true, limit_reached: false } }
@@ -139,7 +142,7 @@
     card.setAttribute('aria-labelledby', `${id}-title`);
     const icon = marks[id];
     // Only fixed, local markup is inserted as HTML. API strings use textContent.
-    card.innerHTML = `<header class="provider-header"><div class="provider-identity"><span class="provider-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${icon}</svg></span><div><h2 id="${id}-title">${providerNames[id]}</h2><div class="provider-subtitle">${id === 'codex' ? 'ChatGPT' : 'Anthropic'}</div></div></div><span class="plan"></span></header><div class="gauges"></div><p class="provider-empty" hidden>No limits reported yet</p><div class="history" hidden><div class="history-heading"><span>Last 24 hours</span><span class="history-legend"><span><i class="history-key"></i>5 h</span><span><i class="history-key week"></i>Week</span></span></div><svg viewBox="0 0 600 60" preserveAspectRatio="none" role="img" aria-label="${providerNames[id]} remaining capacity over the last 24 hours"><line class="history-baseline" x1="0" y1="59" x2="600" y2="59"/><polyline class="session-line"/><polyline class="weekly-line"/></svg></div>`;
+    card.innerHTML = `<header class="provider-header"><div class="provider-identity"><span class="provider-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${icon}</svg></span><div><h2 id="${id}-title">${providerNames[id]}</h2><div class="provider-subtitle">${id === 'codex' ? 'ChatGPT' : 'Anthropic'}</div></div></div><span class="plan"></span></header><div class="gauges"></div><p class="provider-empty" hidden>No limits reported yet</p><div class="history" hidden><div class="history-heading"><span>Last 24 hours</span><span class="history-legend"><span data-window="session"><i class="history-key"></i>5 h</span><span data-window="weekly"><i class="history-key week"></i>Week</span></span></div><svg viewBox="0 0 600 60" preserveAspectRatio="none" role="img" aria-label="${providerNames[id]} remaining capacity over the last 24 hours"><line class="history-baseline" x1="0" y1="59" x2="600" y2="59"/><polyline class="session-line"/><polyline class="weekly-line"/></svg></div>`;
     $('#providers').append(card);
     const entry = { element: card, gauges: new Map() };
     cards.set(id, entry);
@@ -148,7 +151,9 @@
 
   function createGauge(card, provider, id) {
     const gauge = document.createElement('section');
-    gauge.className = `gauge ${id === 'reserve' ? 'reserve' : ''}`;
+    gauge.className = 'gauge';
+    gauge.dataset.window = id;
+    gauge.style.order = windows[provider].indexOf(id);
     gauge.innerHTML = `<h3 class="gauge-label">${labels[id]}</h3><div class="meter" role="meter" aria-label="${providerNames[provider]} ${labels[id]} remaining" aria-valuemin="0" aria-valuemax="100"><svg class="ring" viewBox="0 0 200 200" aria-hidden="true"><circle class="ring-track" cx="100" cy="100" r="88"/><circle class="ring-fill" cx="100" cy="100" r="88" pathLength="100" stroke-dasharray="100 100"/></svg><div class="readout" aria-hidden="true"><div class="value"><span class="number">—</span><span class="percent">%</span></div><span class="remaining">left</span></div></div><p class="reset" id="${provider}-${id}-reset"></p>`;
     gauge.querySelector('.meter').setAttribute('aria-describedby', `${provider}-${id}-reset`);
     card.element.querySelector('.gauges').append(gauge);
@@ -164,20 +169,25 @@
     let hasHistory = false;
     for (const [window, selector] of [['session', '.session-line'], ['weekly', '.weekly-line']]) {
       const valid = points.filter((p) => validPercent(p[`${id}.${window}`]));
-      const visible = valid.length >= 2;
+      const reported = snapshot.providers[id]?.windows;
+      const visible = valid.length >= 2 && Array.isArray(reported) && reported.some((w) => w?.id === window);
+      card.element.querySelector(`.history-legend [data-window="${window}"]`).hidden = !visible;
       hasHistory ||= visible;
       card.element.querySelector(selector).setAttribute('points', visible ? valid.map((p) => {
         const x = (Date.parse(p.t) - cutoff) / 86400000 * 600;
-        const y = 4 + p[`${id}.${window}`] / 100 * 52;
+        const percent = p[`${id}.${window}`];
+        const y = 4 + (usedMode() ? 100 - percent : percent) / 100 * 52;
         return `${x.toFixed(1)},${y.toFixed(1)}`;
       }).join(' ') : '');
     }
-    card.element.querySelector('.history').hidden = !hasHistory;
+    card.element.querySelector('.history').hidden = !showHistory || !hasHistory;
   }
 
   function render() {
     if (!snapshot) return;
     paintDisplayToggle();
+    $('#history-toggle').setAttribute('aria-pressed', String(showHistory));
+    $('#dashboard').classList.toggle('show-history', showHistory);
     $('#dashboard').setAttribute('aria-label', usedMode() ? 'AI capacity used' : 'AI capacity remaining');
     const age = ageSeconds();
     const stale = snapshot.stale === true || age > 600;
@@ -237,8 +247,11 @@
         ring.style.opacity = valid ? '1' : '0';
         gauge.querySelector('.reset').textContent = resetText(data.resets_at);
       }
+      card.element.querySelector('.gauges').style.setProperty('--count', Math.max(1, count));
+      card.element.dataset.windows = count;
       card.element.querySelector('.provider-empty').hidden = count > 0;
       card.element.querySelector('.provider-empty').textContent = 'No limits reported yet';
+      renderHistory(card, id);
     }
   }
 
@@ -252,7 +265,6 @@
     if (!savingDisplay && displayModes.includes(data.display)) displayMode = data.display;
     failure = '';
     render();
-    for (const [id, card] of cards) renderHistory(card, id);
   }
 
   async function refresh() {
@@ -351,6 +363,11 @@
   $('#display-toggle').addEventListener('click', (event) => {
     const button = event.target.closest('button[data-mode]');
     if (button) setDisplay(button.dataset.mode);
+  });
+  $('#history-toggle').addEventListener('click', () => {
+    showHistory = !showHistory;
+    try { localStorage.setItem('quota.history', String(showHistory)); } catch { /* Still works for this visit. */ }
+    render();
   });
   window.addEventListener('hashchange', start);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
