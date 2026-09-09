@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Quota</string>
+    <string name="widget_label">Quota</string>
+    <string name="widget_description">Claude and Codex limits at a glance</string>
+</resources>

@@ -1,0 +1,8 @@
+<!-- Mirrors docs/DESIGN.md. Kept in sync with ui/theme/Color.kt by hand: these are only
+     used by the platform theme and by the widget container. -->
+<resources>
+    <color name="background">#F6F7F9</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="text_primary">#111827</color>
+    <color name="text_secondary">#6B7280</color>
+</resources>
