@@ -97,17 +97,33 @@ class QuotaWidget : GlanceAppWidget() {
     }
 }
 
+/** The 2 x 1 pair: brand mark, a gap, then the ring. See [SmallContent]. */
+private const val SMALL_MARK_DP = 16
+private const val SMALL_GAP_DP = 6
+
 /**
  * A 2 x 1 cell is one row high once the launcher's own widget insets are taken out, so the
  * ring and the provider name cannot be stacked — the name was rendering half cut off. The
  * mark carries the identity instead, inline with the ring, which also buys the ring the
- * pixels the name was wasting. The ring is sized from the height that is actually left.
+ * pixels the name was wasting.
+ *
+ * The ring is sized from the space that is actually left, in **both** axes. Height alone is
+ * not enough: a 2 x 1 cell is 172 dp wide on a Pixel 7a but the widget host in
+ * `WidgetPreviewActivity` asks for 160, and a denser launcher grid asks for less again. At
+ * 160 dp a height-only 48 dp ring overflows its half by 6 dp and the launcher clips the
+ * mark off the left edge — which is exactly what that preview showed. Bounding by width
+ * shrinks the ring instead, and below the smallest legible ring the layout drops to the
+ * number-only variant rather than cutting anything off.
  */
 @Composable
 private fun SmallContent(snapshot: Snapshot, mode: DisplayMode) {
     val stale = snapshot.isStale()
-    val height = LocalSize.current.height.value
-    val diameter = (height - 30).toInt().coerceIn(30, 48)
+    val size = LocalSize.current
+    val height = size.height.value
+    // The card takes 4 dp a side, each half then takes 6 dp a side (see the Row below).
+    val perHalf = size.width.value / 2 - 4 - 2 * 6
+    val diameter = minOf(height - 30, perHalf - SMALL_MARK_DP - SMALL_GAP_DP).toInt()
+    val ringFits = height >= 56 && diameter >= 30
     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
         ProviderId.entries.forEach { id ->
             val window = snapshot.status.providers[id.key]?.sessionWindow()
@@ -118,12 +134,12 @@ private fun SmallContent(snapshot: Snapshot, mode: DisplayMode) {
                 verticalAlignment = Alignment.Vertical.CenterVertically,
                 horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
             ) {
-                if (height >= 56) {
-                    ProviderMark(id, sizeDp = 16)
-                    Spacer(GlanceModifier.size(6.dp))
-                    MiniRing(window, stale, diameterDp = diameter, mode = mode)
+                if (ringFits) {
+                    ProviderMark(id, sizeDp = SMALL_MARK_DP)
+                    Spacer(GlanceModifier.size(SMALL_GAP_DP.dp))
+                    MiniRing(window, stale, diameterDp = diameter.coerceAtMost(48), mode = mode)
                 } else {
-                    // Too short for a ring at all: the mark and the number, nothing else.
+                    // Too tight for a ring at all: the mark and the number, nothing else.
                     ProviderMark(id, sizeDp = 14)
                     Spacer(GlanceModifier.size(5.dp))
                     Text(
