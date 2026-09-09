@@ -210,7 +210,7 @@ def collect_codex() -> dict[str, Any]:
 
     astra = (data.get("model_usage") or {}).get("gpt-6-astra") or {}
     return {
-        "plan": data.get("plan_type") or None,
+        "plan": CODEX_PLAN_NAMES.get(data.get("plan_type") or "", data.get("plan_type")) or None,
         "windows": windows,
         "extra": {
             "astra_available": bool(astra.get("available")),
@@ -249,6 +249,8 @@ def collect() -> dict[str, Any]:
 
 
 FALLBACK_WORKER_URL = "https://quota.mcp-tools-lab.workers.dev"
+# ChatGPT plan slugs as the usage endpoint reports them, mapped to their public names.
+CODEX_PLAN_NAMES = {"plus": "Plus", "prolite": "Pro 5x", "pro": "Pro 20x", "free": "Free", "team": "Team", "enterprise": "Enterprise"}
 
 
 def send(config: dict[str, Any], snapshot: dict[str, Any]) -> None:
