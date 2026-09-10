@@ -155,9 +155,16 @@ describe('cron', () => {
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe('https://trmnl.com/api/custom_plugins/abc');
     const body = JSON.parse(init.body as string);
-    expect(body.merge_variables.claude_session).toBe(18);
-    expect(body.merge_variables.codex_reserve).toBe(0);
-    expect(body.merge_variables.severity).toBe('warn');
+    const v = body.merge_variables;
+    expect(v.layout_version).toBe(2);
+    expect(v.claude_value).toBe(39);
+    expect(v.claude_label).toBe('Week');
+    expect(v.claude_state).toBe('warn');
+    expect(v.codex_has_value).toBe(true);
+    expect(v.codex_value).toBe(90);
+    // Windows this plan does not have are simply absent from the payload.
+    expect(v.codex_reserve).toBeUndefined();
+    expect(v.gemini_present).toBe(false);
     expect(JSON.stringify(body).length).toBeLessThan(2048);
     vi.unstubAllGlobals();
   });

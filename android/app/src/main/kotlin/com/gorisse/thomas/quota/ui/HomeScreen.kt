@@ -70,7 +70,7 @@ fun HomeScreen(
                         }
                     }
                     items(snapshot.orderedProviders(), key = { it.first }) { (name, provider) ->
-                        ProviderCard(name, provider, snapshot, stale, now, mode)
+                        ProviderCard(name, provider, stale, now, mode)
                     }
                     item {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -153,63 +153,46 @@ private fun SeverityPill(severity: Severity) {
         modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(severity.color.copy(alpha = .12f))
             .padding(horizontal = 8.dp, vertical = 8.dp)) {
         Box(Modifier.size(6.dp).clip(CircleShape).background(ink))
-        Text(when (severity) {
-            Severity.OK -> "All good"
-            Severity.WARN -> "Watch usage"
-            Severity.CRITICAL -> "Running low"
-            Severity.STALE -> "Out of date"
-        }, style = MaterialTheme.typography.labelMedium, color = ink, modifier = Modifier.padding(start = 8.dp))
+        Text(severity.glanceLabel(), style = MaterialTheme.typography.labelMedium, color = ink, modifier = Modifier.padding(start = 8.dp))
     }
 }
 
 @Composable
 private fun ProviderCard(
-    name: String, provider: Provider, snapshot: Snapshot, stale: Boolean, now: Instant,
+    name: String, provider: Provider, stale: Boolean, now: Instant,
     mode: DisplayMode,
 ) {
     Card(shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ProviderMark(ProviderId.of(name.lowercase()))
-                Text(name, Modifier.weight(1f).padding(start = 8.dp), style = MaterialTheme.typography.titleLarge)
-                provider.plan?.let { plan ->
-                    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                        Text(plan.replaceFirstChar(Char::uppercase), Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            val windows = provider.glanceWindows()
+            val hero = windows.firstOrNull()
+            if (hero != null) {
+                RingGauge(hero, stale, diameter = 112.dp, showDetails = false, mode = mode)
             }
-            val primary = provider.windows.filter { it.id != "reserve" }
-            primary.chunked(2).forEach { windows ->
-                BoxWithConstraints(Modifier.fillMaxWidth()) {
-                    val diameter = ((maxWidth - 24.dp) / 2).coerceAtMost(120.dp)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        windows.forEach { window ->
-                            RingGauge(window, stale, Modifier.weight(1f), diameter, window.resetsIn(now), mode = mode)
-                        }
-                    }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ProviderMark(ProviderId.of(name.lowercase()), stale = stale)
+                    Text(name, style = MaterialTheme.typography.titleLarge)
                 }
-            }
-            provider.windows.filter { it.id == "reserve" }.forEach { window ->
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(window.label, style = MaterialTheme.typography.titleSmall)
-                        Text(formatResetsIn(window.resetsIn(now)), style = MaterialTheme.typography.bodySmall,
+                Text(providerSubtitle(name, provider.plan), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (hero != null) {
+                    Text(hero.label.ifEmpty { hero.id }, style = MaterialTheme.typography.titleSmall)
+                    Text(formatResetsIn(hero.resetsIn(now)), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    windows.drop(1).forEach { window ->
+                        Text("${window.label.ifEmpty { window.id }} ${window.shown(mode)}% ${if (mode.isUsed) "used" else "left"}",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    RingGauge(window, stale, diameter = 72.dp, resetsIn = window.resetsIn(now),
-                        showDetails = false, mode = mode)
+                } else {
+                    Text("No data", style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            ProviderHistory(
-                name.lowercase(), snapshot.status.history, stale, now,
-                windowIds = provider.windows.take(2).map { it.id },
-            )
         }
     }
 }

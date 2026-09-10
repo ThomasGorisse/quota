@@ -44,14 +44,15 @@ fun QuotaWordmark(modifier: Modifier = Modifier) {
  * takes the same sweep rather than a flat wash.
  */
 @Composable
-fun ProviderMark(id: ProviderId?, modifier: Modifier = Modifier, size: Dp = 32.dp) {
+fun ProviderMark(id: ProviderId?, modifier: Modifier = Modifier, size: Dp = 32.dp, stale: Boolean = false) {
     val fallback = MaterialTheme.colorScheme.onSurfaceVariant
-    val color = id?.accent() ?: fallback
+    val color = if (stale) com.gorisse.thomas.quota.ui.theme.QuotaColors.Stale else id?.accent() ?: fallback
     Box(
         modifier = modifier
             .size(size)
             .background(
-                brush = id?.accentBrush(0.12f) ?: androidx.compose.ui.graphics.SolidColor(fallback.copy(alpha = 0.12f)),
+                brush = if (stale) androidx.compose.ui.graphics.SolidColor(color.copy(alpha = 0.12f))
+                else id?.accentBrush(0.12f) ?: androidx.compose.ui.graphics.SolidColor(fallback.copy(alpha = 0.12f)),
                 shape = RoundedCornerShape(size / 4),
             ),
         contentAlignment = Alignment.Center,
@@ -61,7 +62,7 @@ fun ProviderMark(id: ProviderId?, modifier: Modifier = Modifier, size: Dp = 32.d
             ProviderId.GEMINI -> R.drawable.ic_brand_gemini
             else -> R.drawable.ic_brand_claude
         }
-        if (id == ProviderId.GEMINI) {
+        if (id == ProviderId.GEMINI && !stale) {
             androidx.compose.foundation.Image(
                 painter = painterResource(mark),
                 contentDescription = null,

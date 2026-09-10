@@ -9,8 +9,10 @@ Stdlib only, like the collector itself. Nothing here touches the network, the ke
 
 import json
 import sys
+import tempfile
 import unittest
 import urllib.error
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -182,7 +184,7 @@ class CollectSkipsGemini(unittest.TestCase):
              mock.patch.object(qc, "collect_codex", return_value={"plan": "Pro 20x", "windows": [], "extra": {}}), \
              mock.patch.object(qc, "collect_gemini", side_effect=qc.GeminiUnavailable("not signed in")), \
              mock.patch.object(qc, "log"):
-            snapshot = qc.collect()
+            snapshot = qc.collect(cache={})
         self.assertEqual(sorted(snapshot["providers"]), ["claude", "codex"])
 
     def test_a_transient_gemini_failure_still_reports_an_error_card(self):
@@ -190,9 +192,59 @@ class CollectSkipsGemini(unittest.TestCase):
              mock.patch.object(qc, "collect_codex", return_value={"plan": None, "windows": [], "extra": {}}), \
              mock.patch.object(qc, "collect_gemini", side_effect=TimeoutError("the read timed out")), \
              mock.patch.object(qc, "log"):
-            snapshot = qc.collect()
+            snapshot = qc.collect(cache={})
         self.assertIn("gemini", snapshot["providers"])
         self.assertIn("error", snapshot["providers"]["gemini"]["extra"])
+
+
+class CachedProviders(unittest.TestCase):
+    """A provider that fails transiently keeps its last reading instead of vanishing."""
+
+    def snapshot(self, cache, error=urllib.error.HTTPError("u", 429, "Too Many Requests", None, None)):
+        with mock.patch.object(qc, "collect_claude", side_effect=error), \
+             mock.patch.object(qc, "collect_codex", return_value={"plan": "Pro 20x", "windows": [{"id": "weekly", "label": "Week", "percent": 12, "resets_at": None}], "extra": {}}), \
+             mock.patch.object(qc, "collect_gemini", side_effect=qc.GeminiUnavailable("not signed in")), \
+             mock.patch.object(qc, "log"):
+            return qc.collect(cache=cache)
+
+    def fresh_cache(self, minutes_ago=6):
+        measured = datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)
+        return {"claude": {
+            "plan": "Max 20x",
+            "windows": [{"id": "session", "label": "5 h", "percent": 41, "resets_at": None}],
+            "measured_at": qc.iso(measured),
+        }}
+
+    def test_a_429_serves_the_last_reading_with_its_age(self):
+        claude = self.snapshot(self.fresh_cache())["providers"]["claude"]
+        self.assertEqual(claude["plan"], "Max 20x")
+        self.assertEqual(claude["windows"][0]["percent"], 41)
+        self.assertEqual(claude["extra"]["error"], "HTTP 429")
+        self.assertGreaterEqual(claude["extra"]["age_seconds"], 5 * 60)
+
+    def test_a_reading_older_than_the_ceiling_is_not_served(self):
+        claude = self.snapshot(self.fresh_cache(minutes_ago=90))["providers"]["claude"]
+        self.assertEqual(claude["windows"], [])
+        self.assertEqual(claude["extra"], {"error": "HTTP 429"})
+
+    def test_an_empty_cache_still_yields_an_error_card(self):
+        claude = self.snapshot({})["providers"]["claude"]
+        self.assertEqual(claude["windows"], [])
+        self.assertEqual(claude["extra"]["error"], "HTTP 429")
+
+    def test_a_successful_read_refreshes_the_cache(self):
+        cache = self.fresh_cache(minutes_ago=90)
+        self.snapshot(cache)
+        self.assertEqual(cache["codex"]["windows"][0]["percent"], 12)
+        # The failing provider keeps its stale entry: only a good read overwrites it.
+        self.assertEqual(cache["claude"]["windows"][0]["percent"], 41)
+
+    def test_a_corrupt_cache_file_is_no_cache(self):
+        path = Path(tempfile.mkdtemp()) / "last-good.json"
+        path.write_text("{not json")
+        self.assertEqual(qc.read_cache(path), {})
+        qc.write_cache({"claude": {"windows": []}}, path)
+        self.assertEqual(qc.read_cache(path), {"claude": {"windows": []}})
 
 
 if __name__ == "__main__":
