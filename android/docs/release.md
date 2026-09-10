@@ -146,9 +146,9 @@ collector, which a reviewer does not have — so from versionCode 3 the pairing 
 > The app does not require any sign-in or account. On the first screen, tap "Try with sample
 > data" to load the whole app and its widgets with example Claude, Codex and Gemini usage —
 > no credentials, no network access. A persistent "Sample data" chip in the header and on the
-> widgets marks the values as examples, and the button next to it, "Leave sample data",
-> returns to the first screen. Pairing with a real Mac is optional and only needed to see
-> your own usage.
+> widgets marks the values as examples. To leave it, tap the broken-link icon at the top
+> right of that same header and confirm "Leave sample data"; the app returns to the first
+> screen. Pairing with a real Mac is optional and only needed to see your own usage.
 
 Keep that paragraph and the button's wording in step: the form is checked against the build.
 
