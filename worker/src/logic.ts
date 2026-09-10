@@ -208,8 +208,9 @@ export function buildMergeVariables(
     vars[`${id}_reset`] = reset(hero.resets_at);
     vars[`${id}_state`] = status.stale ? 'stale' : state(hero.percent);
     vars[`${id}_state_label`] = status.stale ? 'Out of date' : wording[state(hero.percent)];
-    // Text is deliberately secondary. Reserve has no bespoke treatment.
-    vars[`${id}_detail`] = windows.slice(1).map(w => `${w.label || w.id} ${shown(w.percent)}% ${word}`).join(' · ');
+    // Text is deliberately secondary. Reserve has no bespoke treatment. Three secondary
+    // windows is one line on the board, and keeps the payload inside TRMNL's 2 KB.
+    vars[`${id}_detail`] = windows.slice(1, 4).map(w => `${w.label || w.id} ${shown(w.percent)}% ${word}`).join(' · ');
   }
   return vars;
 }

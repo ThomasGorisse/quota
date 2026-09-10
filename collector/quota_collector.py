@@ -35,7 +35,14 @@ CACHE_PATH = CONFIG_DIR / "last-good.json"
 # How long a provider may be served from cache after it starts failing. Claude answers
 # HTTP 429 for tens of minutes at a time; below this age the last reading is still a far
 # better answer than no card at all, above it the numbers stop being believable.
-CACHE_MAX_AGE = 45 * 60
+#
+# The payload has one `collected_at` for the whole snapshot, so a cached provider rides on
+# a fresh timestamp: the ceiling is what bounds that lie. Five collector cycles is short
+# enough that a 5-hour window cannot have moved much, and long enough to cover the 429
+# bursts measured on 2026-09-10. `extra.measured_at` and `extra.age_seconds` carry the real
+# age for whoever wants it; per-provider freshness in `GET /v1/status` is the proper fix
+# and needs a contract change across four clients.
+CACHE_MAX_AGE = 15 * 60
 
 DEFAULT_WORKER_URL = "https://quota.sceneview.dev"
 

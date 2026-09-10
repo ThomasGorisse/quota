@@ -47,6 +47,7 @@
   let displayMode = displayModes.includes(query.get('display')) ? query.get('display') : 'remaining';
   let savingDisplay = false;
   let showHistory = false;
+  try { showHistory = localStorage.getItem('quota.history') === 'true'; } catch { /* Use the default. */ }
 
   let demoSnapshot;
   const cards = new Map();
