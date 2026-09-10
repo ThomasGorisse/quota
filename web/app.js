@@ -9,13 +9,9 @@
   const displayModes = ['remaining', 'used'];
   const providerNames = { claude: 'Claude', codex: 'Codex', gemini: 'Gemini' };
   const subtitles = { claude: 'Anthropic', codex: 'ChatGPT', gemini: 'Google' };
-  // A provider the collector has never reached is absent from the payload, and an absent
-  // provider gets no card at all: an empty Gemini card would be a promise, not a status.
-  const optional = new Set(['gemini']);
+  // Only reported providers receive cards.
   // A window keeps the label the collector sent — Gemini names its windows after the models
   // it meters, so nothing here may assume `session` and `weekly` exist.
-  const labels = { session: '5 h', weekly: 'Week', reserve: 'Reserve' };
-  const rank = ['session', 'weekly', 'reserve'];
   // Official marks: simple-icons (CC0) for Claude and OpenAI, lobe-icons (MIT) for Gemini.
   // Trademarks of Anthropic, OpenAI and Google, used nominatively to identify the service.
   // See docs/brand/NOTICE.md.
@@ -31,21 +27,15 @@
   function reportedWindows(id) {
     const list = Array.isArray(snapshot?.providers?.[id]?.windows) ? snapshot.providers[id].windows : [];
     return list
-      .filter((w) => w && typeof w.id === 'string')
-      .map((w, index) => ({ ...w, order: index, text: w.label || labels[w.id] || w.id }))
-      .sort((a, b) => {
-        const ra = rank.indexOf(a.id) < 0 ? rank.length : rank.indexOf(a.id);
-        const rb = rank.indexOf(b.id) < 0 ? rank.length : rank.indexOf(b.id);
-        return ra === rb ? a.order - b.order : ra - rb;
-      });
+      .filter((w) => w && typeof w.id === 'string' && validPercent(w.percent))
+      .map((w, index) => ({ ...w, order: index, text: w.label || w.id }))
+      .sort((a, b) => b.percent - a.percent || a.order - b.order);
   }
 
-  /** The providers with a card on screen: the two permanent ones, plus any that reported. */
   function visibleProviders() {
-    return Object.keys(providerNames).filter(
-      (id) => !optional.has(id) || (snapshot?.providers?.[id]?.windows || []).length > 0,
-    );
+    return Object.keys(providerNames).filter((id) => snapshot?.providers?.[id]);
   }
+
   let token = '';
   let snapshot = null;
   let receivedAt = 0;
@@ -57,7 +47,7 @@
   let displayMode = displayModes.includes(query.get('display')) ? query.get('display') : 'remaining';
   let savingDisplay = false;
   let showHistory = false;
-  try { showHistory = localStorage.getItem('quota.history') === 'true'; } catch { /* Use the default. */ }
+
   let demoSnapshot;
   const cards = new Map();
 
@@ -79,34 +69,35 @@
   function makeDemo() {
     const now = Date.now();
     const iso = (seconds) => new Date(now + seconds * 1000).toISOString();
-    const series = [2, 3, 3, 6, 9, 13, 13, 19, 24, 28, 28, 32, 39, 41, 47, 53, 53, 57, 62, 69, 75, 3, 7, 11];
     return {
-      collected_at: iso(-42), age_seconds: 42, stale: false,
+      collected_at: iso(0), age_seconds: 42, stale: false,
       providers: {
-        claude: { plan: 'Max', windows: [
-          { id: 'session', label: '5 h', percent: 11, resets_at: iso(9000) },
-          { id: 'weekly', label: 'Week', percent: 60, resets_at: iso(240000) }
+        claude: { plan: 'max', windows: [
+          { id: 'session', label: '5 h', percent: 11, resets_at: iso(7800) },
+          { id: 'weekly', label: 'Week', percent: 68, resets_at: iso(223200) }
         ], extra: { extra_usage_enabled: false } },
-        codex: { plan: demoPro ? 'Pro 5x' : 'Plus', windows: [
-          ...(!demoPro ? [{ id: 'session', label: '5 h', percent: 12, resets_at: iso(8227) }] : []),
-          { id: 'weekly', label: 'Week', percent: 6, resets_at: iso(505388) },
-          { id: 'reserve', label: 'Reserve', percent: 10, resets_at: iso(339414) }
+        codex: { plan: demoPro ? 'pro' : 'plus', windows: [
+          ...(!demoPro ? [{ id: 'session', label: '5 h', percent: 92, resets_at: iso(2220) }] : []),
+          { id: 'weekly', label: 'Week', percent: demoPro ? 74 : 34, resets_at: iso(504000) },
+          { id: 'reserve', label: 'Reserve', percent: 10, resets_at: iso(345600) }
         ], extra: { astra_available: true, limit_reached: false } },
         gemini: { plan: 'Standard', windows: [
           { id: 'gemini-3-pro', label: '3 Pro', percent: 62, resets_at: iso(18900) },
           { id: 'gemini-2-5-pro', label: '2.5 Pro', percent: 29, resets_at: iso(50400) }
         ], extra: { buckets: 4 } }
       },
-      severity: 'warn',
-      history: series.map((value, i) => ({
-        t: iso(-42 - (23 - i) * 3600),
-        'claude.session': value,
-        'claude.weekly': Math.round(31 + i * 29 / 23),
-        'codex.session': Math.round(value * 12 / 11),
-        'codex.weekly': Math.round(i * 6 / 23),
-        'gemini.gemini-3-pro': Math.round(20 + i * 42 / 23),
-        'gemini.gemini-2-5-pro': Math.round(6 + i * 23 / 23)
+      severity: demoPro ? 'warn' : 'critical',
+      display: displayMode,
+      history: Array.from({ length: 25 }, (_, hour) => ({
+        t: iso(-(24 - hour) * 3600),
+        'claude.session': hour < 22 ? 8 + hour * 3 : 5 + (hour - 22) * 3,
+        'claude.weekly': 44 + hour,
+        ...(!demoPro ? { 'codex.session': 20 + hour * 3 } : {}),
+        'codex.weekly': demoPro ? 50 + hour : 10 + hour,
+        'gemini.gemini-3-pro': 20 + hour * 2,
+        'gemini.gemini-2-5-pro': 6 + hour
       }))
+
     };
   }
 
@@ -119,12 +110,12 @@
   }
   function resetText(at) {
     const time = Date.parse(at);
-    if (!Number.isFinite(time)) return 'Reset time unavailable';
-    if (time <= Date.now()) return 'Reset due · awaiting update';
+    if (!Number.isFinite(time)) return 'Reset time unknown';
+    if (time <= Date.now()) return 'Reset due';
     const minutes = Math.ceil((time - Date.now()) / 60000);
-    if (minutes < 60) return `resets in ${minutes} min`;
-    if (minutes < 1440) return `resets in ${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`;
-    return `resets in ${Math.floor(minutes / 1440)} d ${Math.floor(minutes % 1440 / 60)} h`;
+    if (minutes < 60) return `Resets in ${minutes} min`;
+    if (minutes < 1440) return `Resets in ${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+    return `Resets in ${Math.floor(minutes / 1440)} d ${Math.floor(minutes % 1440 / 60)} h`;
   }
   function elapsedText(age) {
     if (age < 60) return `updated ${Math.floor(age)} s ago`;
@@ -149,6 +140,7 @@
     if (!displayModes.includes(mode) || mode === displayMode) return;
     const previous = displayMode;
     displayMode = mode;
+    if (demo && snapshot) snapshot.display = mode;
     paintDisplayToggle();
     render();
     if (demo || !token) return;
@@ -178,7 +170,7 @@
     card.setAttribute('aria-labelledby', `${id}-title`);
     const icon = marks[id];
     // Only fixed, local markup is inserted as HTML. API strings use textContent.
-    card.innerHTML = `<header class="provider-header"><div class="provider-identity"><span class="provider-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${icon}</svg></span><div><h2 id="${id}-title">${providerNames[id]}</h2><div class="provider-subtitle">${subtitles[id]}</div></div></div><span class="plan"></span></header><div class="gauges"></div><p class="provider-empty" hidden>No limits reported yet</p><div class="history" hidden><div class="history-heading"><span>Last 24 hours</span><span class="history-legend"><span class="legend-primary"><i class="history-key"></i><span class="legend-text"></span></span><span class="legend-secondary"><i class="history-key week"></i><span class="legend-text"></span></span></span></div><svg viewBox="0 0 600 60" preserveAspectRatio="none" role="img" aria-label="${providerNames[id]} remaining capacity over the last 24 hours"><line class="history-baseline" x1="0" y1="59" x2="600" y2="59"/><polyline class="session-line"/><polyline class="weekly-line"/></svg></div>`;
+    card.innerHTML = `<header class="provider-header"><div class="provider-identity"><span class="provider-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${icon}</svg></span><div><h2 id="${id}-title">${providerNames[id]}</h2><div class="provider-subtitle">${subtitles[id]}</div></div></div></header><div class="gauges"></div><p class="provider-empty" hidden>No limits reported yet</p><div class="history" hidden><div class="history-heading"><span>Last 24 hours</span><span class="history-legend"><span class="legend-primary"><i class="history-key"></i><span class="legend-text"></span></span><span class="legend-secondary"><i class="history-key week"></i><span class="legend-text"></span></span></span></div><svg viewBox="0 0 600 60" preserveAspectRatio="none" role="img" aria-label="${providerNames[id]} remaining capacity over the last 24 hours"><line class="history-baseline" x1="0" y1="59" x2="600" y2="59"/><polyline class="session-line"/><polyline class="weekly-line"/></svg></div>`;
     $('#providers').append(card);
     const entry = { element: card, gauges: new Map() };
     cards.set(id, entry);
@@ -191,7 +183,7 @@
     gauge.className = 'gauge';
     gauge.dataset.window = id;
     // Only fixed markup is inserted as HTML; the label the API sent goes in by textContent.
-    gauge.innerHTML = `<h3 class="gauge-label"></h3><div class="meter" role="meter" aria-valuemin="0" aria-valuemax="100"><svg class="ring" viewBox="0 0 200 200" aria-hidden="true"><circle class="ring-track" cx="100" cy="100" r="88"/><circle class="ring-fill" cx="100" cy="100" r="88" pathLength="100" stroke-dasharray="100 100"/></svg><div class="readout" aria-hidden="true"><div class="value"><span class="number">—</span><span class="percent">%</span></div><span class="remaining">left</span></div></div><p class="reset"></p>`;
+    gauge.innerHTML = `<div class="meter" role="meter" aria-valuemin="0" aria-valuemax="100"><svg class="ring" viewBox="0 0 200 200" aria-hidden="true"><circle class="ring-track" cx="100" cy="100" r="88"/><circle class="ring-fill" cx="100" cy="100" r="88" pathLength="100" stroke-dasharray="100 100"/></svg><div class="readout" aria-hidden="true"><div class="value"><span class="number">—</span><span class="percent">%</span></div><span class="remaining">left</span></div></div><h3 class="gauge-label"></h3><p class="reset"></p>`;
     gauge.querySelector('.gauge-label').textContent = window.text;
     gauge.querySelector('.reset').id = `${provider}-${id}-reset`;
     gauge.querySelector('.meter').setAttribute('aria-describedby', `${provider}-${id}-reset`);
@@ -241,11 +233,11 @@
     const ranks = { loading: -1, ok: 0, warn: 1, critical: 2 };
     const overall = stale ? 'stale' : ranks[snapshot.severity] > ranks[worst] ? snapshot.severity : worst;
     $('#severity').dataset.severity = overall;
-    $('#severity').textContent = { ok: 'All clear', warn: 'Watch usage', critical: 'Running low', stale: 'Stale', loading: 'No data' }[overall];
+    $('#severity').textContent = { ok: 'Ready', warn: 'Running low', critical: 'Nearly empty', stale: 'Out of date', loading: 'No data' }[overall];
     $('#updated').textContent = elapsedText(age);
     $('#dashboard').classList.toggle('is-stale', stale);
     const seen = new Date(snapshot.collected_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-    $('#notice').textContent = [stale ? `STALE — collector last seen ${seen}` : '', failure].filter(Boolean).join(' · ');
+    $('#notice').textContent = [stale ? `Out of date · last update ${seen}` : '', failure].filter(Boolean).join(' · ');
     $('#notice').hidden = !$('#notice').textContent;
 
     const visible = visibleProviders();
@@ -256,12 +248,18 @@
     for (const [id, card] of cards) {
       if (!visible.includes(id)) { card.element.remove(); cards.delete(id); }
     }
-    for (const id of visible) {
+    for (const [providerIndex, id] of visible.entries()) {
       const card = cards.get(id) || createCard(id);
       card.element.querySelector('.history svg')
         .setAttribute('aria-label', `${providerNames[id]} capacity ${usedMode() ? 'used' : 'remaining'} over the last 24 hours`);
       const provider = snapshot.providers[id];
-      card.element.querySelector('.plan').textContent = provider?.plan || 'Not connected';
+      const plan = provider?.plan || '';
+      const titlePlan = plan ? plan[0].toUpperCase() + plan.slice(1) : '';
+      card.element.querySelector('.provider-subtitle').textContent = id === 'codex'
+        ? (/^chatgpt/i.test(plan) ? plan : `ChatGPT ${titlePlan}`.trim())
+        : [subtitles[id], titlePlan].filter(Boolean).join(' · ');
+      const providerSlot = $('#providers').children[providerIndex];
+      if (providerSlot !== card.element) $('#providers').insertBefore(card.element, providerSlot || null);
       const reported = reportedWindows(id);
       // A window that vanished from the payload must take its gauge with it.
       for (const [windowId, gauge] of card.gauges) {
@@ -271,14 +269,17 @@
       for (const data of reported) {
         const windowId = data.id;
         const gauge = card.gauges.get(windowId) || createGauge(card, id, data);
+        const windowSlot = gauge.parentElement.children[count];
+        if (windowSlot !== gauge) gauge.parentElement.insertBefore(gauge, windowSlot || null);
         gauge.style.order = count;
+        gauge.classList.toggle('hero', count === 0);
         gauge.querySelector('.gauge-label').textContent = data.text;
         gauge.hidden = false;
         count++;
         const valid = validPercent(data.percent);
-        const remaining = valid ? Math.round((100 - data.percent) * 10) / 10 : null;
+        const remaining = valid ? 100 - Math.round(data.percent) : null;
         // Same arc, read the other way round: it grows with usage in "used" mode.
-        const shown = valid ? (usedMode() ? Math.round(data.percent * 10) / 10 : remaining) : null;
+        const shown = valid ? (usedMode() ? Math.round(data.percent) : remaining) : null;
         const word = usedMode() ? 'used' : 'remaining';
         const meter = gauge.querySelector('.meter');
         const ring = gauge.querySelector('.ring-fill');
@@ -326,7 +327,7 @@
     if (demo) {
       demoSnapshot ||= makeDemo();
       // A demo collector stays live while the sample percentages remain fixed.
-      demoSnapshot.collected_at = new Date(Date.now() - 42000).toISOString();
+      demoSnapshot.collected_at = new Date().toISOString();
       accept(demoSnapshot);
       return;
     }
@@ -392,12 +393,6 @@
     $('#severity').dataset.severity = 'loading';
     $('#notice').textContent = 'Connecting to your collector…';
     $('#notice').hidden = false;
-    for (const id of Object.keys(providerNames)) {
-      if (optional.has(id)) continue;
-      const card = createCard(id);
-      card.element.querySelector('.provider-empty').hidden = false;
-      card.element.querySelector('.provider-empty').textContent = 'Waiting for your limits';
-    }
     refresh();
   }
 

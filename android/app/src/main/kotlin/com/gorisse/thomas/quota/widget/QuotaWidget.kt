@@ -36,21 +36,22 @@ import androidx.glance.text.TextStyle
 import com.gorisse.thomas.quota.MainActivity
 import com.gorisse.thomas.quota.R
 import com.gorisse.thomas.quota.data.DisplayMode
-import com.gorisse.thomas.quota.data.Provider
 import com.gorisse.thomas.quota.data.ProviderId
 import com.gorisse.thomas.quota.data.Severity
 import com.gorisse.thomas.quota.data.Snapshot
 import com.gorisse.thomas.quota.data.StatusRepository
 import com.gorisse.thomas.quota.data.Window
-import com.gorisse.thomas.quota.ui.formatAge
-import com.gorisse.thomas.quota.ui.formatResetsInShort
+import com.gorisse.thomas.quota.ui.formatResetsIn
+import com.gorisse.thomas.quota.ui.glanceHero
+import com.gorisse.thomas.quota.ui.glanceWindows
+import com.gorisse.thomas.quota.ui.glanceLabel
+import com.gorisse.thomas.quota.ui.providerSubtitle
 import com.gorisse.thomas.quota.ui.theme.QuotaColors
 import com.gorisse.thomas.quota.ui.theme.accent
 import com.gorisse.thomas.quota.ui.theme.argb
 
 /**
- * Two layouts, chosen by cell size: 2×1 shows the headline rings, 4×2 shows every window
- * with its label. The widget never fetches — [RefreshWorker] does, then calls `updateAll`.
+ * Two sizes of the same glance: one overall hero, with provider detail on the large tile. The widget never fetches — [RefreshWorker] does, then calls `updateAll`.
  */
 class QuotaWidget : GlanceAppWidget() {
 
@@ -96,131 +97,92 @@ class QuotaWidget : GlanceAppWidget() {
     }
 }
 
-/** The 2 x 1 pair: brand mark, a gap, then the ring. See [SmallContent]. */
-private const val SMALL_MARK_DP = 16
-private const val SMALL_GAP_DP = 6
-
-/**
- * A 2 x 1 cell is one row high once the launcher's own widget insets are taken out, so the
- * ring and the provider name cannot be stacked — the name was rendering half cut off. The
- * mark carries the identity instead, inline with the ring, which also buys the ring the
- * pixels the name was wasting.
- *
- * The ring is sized from the space that is actually left, in **both** axes. Height alone is
- * not enough: a 2 x 1 cell is 172 dp wide on a Pixel 7a but the widget host in
- * `WidgetPreviewActivity` asks for 160, and a denser launcher grid asks for less again. At
- * 160 dp a height-only 48 dp ring overflows its half by 6 dp and the launcher clips the
- * mark off the left edge — which is exactly what that preview showed. Bounding by width
- * shrinks the ring instead, and below the smallest legible ring the layout drops to the
- * number-only variant rather than cutting anything off.
- */
+/** One overall hero, even with two providers. A tiny host loses the ring before the unit. */
 @Composable
 private fun SmallContent(snapshot: Snapshot, mode: DisplayMode) {
+    val hero = snapshot.glanceHero()
+    if (hero == null) {
+        Text("No data", style = TextStyle(color = secondaryText(), fontSize = 12.sp))
+        return
+    }
+    val (name, window) = hero
     val stale = snapshot.isStale()
     val size = LocalSize.current
-    val height = size.height.value
-    val shown = snapshot.smallProviders()
-    // The card takes 4 dp a side, each share then takes 6 dp a side (see the Row below).
-    val perShare = size.width.value / shown.size - 4 - 2 * 6
-    val diameter = minOf(height - 30, perShare - SMALL_MARK_DP - SMALL_GAP_DP).toInt()
-    val ringFits = height >= 56 && diameter >= 30
+    val diameter = minOf(size.height.value - 8, size.width.value * .36f).toInt().coerceIn(24, 64)
     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
-        shown.forEach { id ->
-            val window = snapshot.status.providers[id.key]?.sessionWindow()
-            Row(
-                // Without this the second provider's mark sits closer to the first
-                // provider's ring than to its own; the pair stops reading as a pair.
-                GlanceModifier.defaultWeight().padding(horizontal = 6.dp),
-                verticalAlignment = Alignment.Vertical.CenterVertically,
-                horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
-            ) {
-                if (ringFits) {
-                    ProviderMark(id, sizeDp = SMALL_MARK_DP)
-                    Spacer(GlanceModifier.size(SMALL_GAP_DP.dp))
-                    MiniRing(window, stale, diameterDp = diameter.coerceAtMost(48), mode = mode)
-                    if (shown.size == 1) {
-                        // Alone in the cell, the headline can afford to name itself.
-                        Spacer(GlanceModifier.size(SMALL_GAP_DP.dp))
-                        Text(
-                            id.displayName,
-                            style = TextStyle(color = primaryText(), fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium),
-                            maxLines = 1,
-                        )
-                    }
-                } else {
-                    // Too tight for a ring at all: the mark and the number, nothing else.
-                    ProviderMark(id, sizeDp = 14)
-                    Spacer(GlanceModifier.size(5.dp))
-                    Text(
-                        window?.let { "${it.shown(mode)}%" } ?: "\u2014",
-                        style = TextStyle(color = primaryText(), fontSize = 16.sp, fontWeight = FontWeight.Bold),
-                        maxLines = 1,
-                    )
-                }
+        if (diameter >= 48) {
+            MiniRing(window, stale, diameter, mode)
+        } else {
+            Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
+                Text("${window.shown(mode)}%", style = TextStyle(color = primaryText(),
+                    fontSize = 22.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+                Text(if (mode.isUsed) "used" else "left", style = TextStyle(color = secondaryText(),
+                    fontSize = 10.sp), maxLines = 1)
             }
+        }
+        Spacer(GlanceModifier.size(8.dp))
+        Column(GlanceModifier.defaultWeight()) {
+            Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
+                ProviderMark(ProviderId.of(name.lowercase()), sizeDp = 10, stale = stale)
+                Spacer(GlanceModifier.size(4.dp))
+                Text("$name · ${window.label.ifEmpty { window.id }}",
+                    style = TextStyle(color = primaryText(), fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium), maxLines = 1)
+            }
+            Text(if (stale) "Out of date" else formatResetsIn(window.resetsIn()),
+                style = TextStyle(color = secondaryText(), fontSize = 10.sp), maxLines = 2)
         }
     }
 }
 
-/** Four primary windows stay equal; reserve is a secondary line, as on the dashboard. */
+/** One overall hero plus plain provider headlines; no secondary rings. */
 @Composable
 private fun LargeContent(snapshot: Snapshot, mode: DisplayMode) {
+    val hero = snapshot.glanceHero()
     val stale = snapshot.isStale()
-    // Two rings per provider at most: five rings on a 7 cm cell rendered ~6sp values.
-    val columns = snapshot.orderedProviders().maxOfOrNull { (_, p) -> p.widgetWindows(2).size } ?: 1
-    // Three providers share the same cell as two did, so the width has to be divided by the
-    // number of columns actually drawn — otherwise the third one's rings overflow their share.
-    val providers = snapshot.orderedProviders().size.coerceAtLeast(1)
-    // The cell also has to fit a header, a provider name, a label, a reset time and the
-    // footer: give the ring what is left, not what the width alone would allow.
-    val diameter = minOf(
-        (LocalSize.current.width.value - 24 - 8 * providers) / (providers * columns) - 4,
-        LocalSize.current.height.value - 100,
-    ).toInt().coerceIn(28, 58)
-    // Three columns cannot also carry the plan chip: the provider name alone has to fit.
-    val roomy = providers <= 2
-    Column(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.Vertical.CenterVertically) {
-        Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
-            Text("Quota", style = TextStyle(color = primaryText(), fontSize = 14.sp, fontWeight = FontWeight.Bold))
+    if (hero == null) {
+        Text("Quota · No data", style = TextStyle(color = secondaryText(), fontSize = 14.sp))
+        return
+    }
+    val (name, window) = hero
+    val diameter = minOf(88f, LocalSize.current.height.value - 60,
+        LocalSize.current.width.value * .32f).toInt().coerceAtLeast(48)
+    Column(GlanceModifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
+            SeverityDot(if (stale) Severity.STALE else window.severity)
             Spacer(GlanceModifier.size(8.dp))
-            // "42 s ago · left" says both how fresh it is and which number it is printing,
-            // on the one line a 4 x 2 cell can spare.
-            Text(
-                formatAge(snapshot.ageSeconds()) + " · " + if (mode.isUsed) "used" else "left",
-                modifier = GlanceModifier.defaultWeight(),
-                style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 1,
-            )
-            SeverityDot(snapshot.severity())
+            Text("Quota · ${if (stale) Severity.STALE.glanceLabel() else window.severity.glanceLabel()}",
+                style = TextStyle(color = primaryText(), fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium), maxLines = 1)
         }
-        Spacer(GlanceModifier.size(6.dp))
-        Row(GlanceModifier.fillMaxWidth()) {
-            snapshot.orderedProviders().forEach { (name, provider) ->
-                Column(GlanceModifier.defaultWeight(), horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
-                    Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
-                        ProviderMark(ProviderId.of(name.lowercase()))
-                        Spacer(GlanceModifier.size(5.dp))
-                        Text(name, style = TextStyle(color = primaryText(),
-                            fontSize = if (roomy) 13.sp else 12.sp, fontWeight = FontWeight.Bold), maxLines = 1)
-                        if (roomy) provider.plan?.let {
-                            Text(" · " + it.replaceFirstChar(Char::uppercase),
-                                style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 1)
+        Spacer(GlanceModifier.size(8.dp))
+        Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
+            Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
+                MiniRing(window, stale, diameter, mode)
+                Spacer(GlanceModifier.size(4.dp))
+                Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
+                    ProviderMark(ProviderId.of(name.lowercase()), sizeDp = 10, stale = stale)
+                    Spacer(GlanceModifier.size(4.dp))
+                    Text("$name · ${window.label.ifEmpty { window.id }}",
+                        style = TextStyle(color = primaryText(), fontSize = 10.sp), maxLines = 1)
+                }
+            }
+            Spacer(GlanceModifier.size(12.dp))
+            Column(GlanceModifier.defaultWeight()) {
+                Text(providerSubtitle(name, snapshot.orderedProviders().firstOrNull { it.first == name }?.second?.plan),
+                    style = TextStyle(color = secondaryText(), fontSize = 10.sp), maxLines = 1)
+                Text(formatResetsIn(window.resetsIn()),
+                    style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 2)
+                Spacer(GlanceModifier.size(8.dp))
+                snapshot.orderedProviders().filter { it.first != name }.forEach { (providerName, provider) ->
+                    provider.glanceWindows().firstOrNull()?.let { limit ->
+                        Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
+                            ProviderMark(ProviderId.of(providerName.lowercase()), stale = stale)
+                            Spacer(GlanceModifier.size(4.dp))
+                            Text("$providerName · ${limit.label.ifEmpty { limit.id }} ${limit.shown(mode)}% ${if (mode.isUsed) "used" else "left"}",
+                                style = TextStyle(color = primaryText(), fontSize = 11.sp), maxLines = 2)
                         }
-                    }
-                    Spacer(GlanceModifier.size(3.dp))
-                    Row(GlanceModifier.fillMaxWidth()) {
-                        provider.widgetWindows(2).forEach { window ->
-                            Column(GlanceModifier.defaultWeight(), horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
-                                MiniRing(window, stale, diameter, mode)
-                                Spacer(GlanceModifier.size(2.dp))
-                                Text(window.label, style = TextStyle(color = primaryText(),
-                                    fontSize = if (roomy) 12.sp else 11.sp,
-                                    fontWeight = FontWeight.Medium), maxLines = 1)
-                                Text(formatResetsInShort(window.resetsIn()),
-                                    style = TextStyle(color = secondaryText(),
-                                        fontSize = if (roomy) 11.sp else 10.sp), maxLines = 1)
-                            }
-                        }
+                        Spacer(GlanceModifier.size(4.dp))
                     }
                 }
             }
@@ -243,7 +205,7 @@ private fun SeverityDot(severity: Severity) {
                 trackArgb = 0,
             ),
         ),
-        contentDescription = severity.wire,
+        contentDescription = severity.glanceLabel(),
         modifier = GlanceModifier.size(8.dp),
     )
 }
@@ -275,29 +237,12 @@ private fun MiniRing(window: Window?, stale: Boolean, diameterDp: Int, mode: Dis
             } ?: "No usage available",
             modifier = GlanceModifier.size(diameterDp.dp),
         )
-        // The number lives outside the bitmap so it follows the theme: see [RingBitmap].
-        if (shown == null) {
-            Text(
-                "\u2014",
-                style = TextStyle(color = primaryText(), fontSize = (diameterDp * 0.34f).sp,
-                    fontWeight = FontWeight.Bold),
-                maxLines = 1,
-            )
-        } else {
-            Row(verticalAlignment = Alignment.Vertical.Bottom) {
-                Text(
-                    shown.toString(),
-                    style = TextStyle(color = primaryText(), fontSize = (diameterDp * 0.34f).sp,
-                        fontWeight = FontWeight.Bold),
-                    maxLines = 1,
-                )
-                Text(
-                    "%",
-                    style = TextStyle(color = primaryText(), fontSize = (diameterDp * 0.19f).sp,
-                        fontWeight = FontWeight.Medium),
-                    maxLines = 1,
-                )
-            }
+        Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
+            Text(shown?.let { "$it%" } ?: "—",
+                style = TextStyle(color = primaryText(), fontSize = (diameterDp * .29f).sp,
+                    fontWeight = FontWeight.Medium), maxLines = 1)
+            Text(if (mode.isUsed) "used" else "left",
+                style = TextStyle(color = secondaryText(), fontSize = (diameterDp * .14f).sp), maxLines = 1)
         }
     }
 }
@@ -305,59 +250,28 @@ private fun MiniRing(window: Window?, stale: Boolean, diameterDp: Int, mode: Dis
 /**
  * The real brand mark, the same one the app shows. Claude and Codex are tinted with their
  * accent — a day/night pair for Codex, whose brand is monochrome and would otherwise vanish
- * against one of the two surfaces. The Gemini mark keeps the gradient baked in its drawable.
+ * against one of the two surfaces. Gemini uses the flat widget tint.
  */
 @Composable
-private fun ProviderMark(id: ProviderId?, sizeDp: Int = 14) {
+private fun ProviderMark(id: ProviderId?, sizeDp: Int = 14, stale: Boolean = false) {
     if (id == null) return
-    if (id == ProviderId.GEMINI) {
-        Image(
-            provider = ImageProvider(R.drawable.ic_brand_gemini),
-            contentDescription = null,
-            modifier = GlanceModifier.size(sizeDp.dp),
-        )
-        return
-    }
+
     Image(
         provider = ImageProvider(
-            if (id == ProviderId.CODEX) R.drawable.ic_brand_openai else R.drawable.ic_brand_claude,
+            when (id) {
+                ProviderId.CODEX -> R.drawable.ic_brand_openai
+                ProviderId.GEMINI -> R.drawable.ic_brand_gemini
+                else -> R.drawable.ic_brand_claude
+            },
         ),
         contentDescription = null,
         colorFilter = ColorFilter.tint(
-            DayNightColorProvider(day = id.accent(dark = false), night = id.accent(dark = true)),
+            DayNightColorProvider(
+                day = if (stale) QuotaColors.Stale else id.accent(dark = false),
+                night = if (stale) QuotaColors.Stale else id.accent(dark = true)),
         ),
         modifier = GlanceModifier.size(sizeDp.dp),
     )
-}
-
-/**
- * Which providers a 2 x 1 cell shows. One or two are drawn side by side, as they always
- * were; a third would leave rings too small to read at arm's length, so the row collapses to
- * the headline — the provider closest to its limit.
- */
-private fun Snapshot.smallProviders(): List<ProviderId> {
-    val reported = ProviderId.entries.filter {
-        status.providers[it.key]?.windows.orEmpty().isNotEmpty()
-    }
-    return when {
-        reported.isEmpty() -> listOf(ProviderId.CLAUDE, ProviderId.CODEX)
-        reported.size <= 2 -> reported
-        else -> listOf(reported.maxBy { status.providers[it.key]?.sessionWindow()?.percent ?: -1 })
-    }
-}
-
-private fun Provider.sessionWindow(): Window? = widgetWindows(1).firstOrNull()
-
-/**
- * The windows worth a ring on a home screen, most relevant first. A provider may report one,
- * two or three of them — the Pro plan reports only `weekly` and `reserve` — so nothing here
- * assumes `session` exists, and anything unknown still gets its turn after the known ids.
- */
-private fun Provider.widgetWindows(max: Int): List<Window> {
-    val rank = listOf("session", "weekly", "reserve")
-    return windows
-        .sortedBy { rank.indexOf(it.id).takeIf { i -> i >= 0 } ?: rank.size }
-        .take(max)
 }
 
 private fun surface() = DayNightColorProvider(

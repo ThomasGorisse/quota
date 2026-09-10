@@ -19,14 +19,14 @@ enum DemoData {
                          display: DisplayMode = SharedStore.shared.displayMode,
                          variant: Variant = LaunchOptions.demoVariant ?? .plus) -> Snapshot {
         Snapshot(status: status(now: now, display: display, variant: variant),
-                 receivedAt: now.addingTimeInterval(-5), isDemo: true)
+                 receivedAt: now, isDemo: true)
     }
 
     static func status(now: Date = Date(),
                        display: DisplayMode = SharedStore.shared.displayMode,
                        variant: Variant = LaunchOptions.demoVariant ?? .plus) -> StatusResponse {
         StatusResponse(
-            collectedAt: ISO8601.string(now.addingTimeInterval(-42)),
+            collectedAt: ISO8601.string(now),
             ageSeconds: 42,
             stale: false,
             providers: [
@@ -51,7 +51,7 @@ enum DemoData {
                     window("gemini-2-5-pro", "2.5 Pro", used: 29, in: 14 * 3600, from: now),
                 ]),
             ],
-            severity: Severity.critical.wire,
+            severity: variant == .pro ? Severity.warn.wire : Severity.critical.wire,
             display: display.rawValue
         )
     }

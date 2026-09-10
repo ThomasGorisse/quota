@@ -30,6 +30,12 @@ HOME = Path.home()
 CONFIG_DIR = HOME / ".quota"
 CONFIG_PATH = CONFIG_DIR / "config.json"
 PAIRING_PATH = CONFIG_DIR / "pairing.txt"
+CACHE_PATH = CONFIG_DIR / "last-good.json"
+
+# How long a provider may be served from cache after it starts failing. Claude answers
+# HTTP 429 for tens of minutes at a time; below this age the last reading is still a far
+# better answer than no card at all, above it the numbers stop being believable.
+CACHE_MAX_AGE = 45 * 60
 
 DEFAULT_WORKER_URL = "https://quota.sceneview.dev"
 
@@ -470,26 +476,75 @@ def describe(error: BaseException) -> str:
     return f"{type(error).__name__}: {error}"
 
 
-def collect() -> dict[str, Any]:
+def read_cache(path: Path = CACHE_PATH) -> dict[str, Any]:
+    """Last good reading per provider. A corrupt or missing file is simply no cache."""
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def write_cache(cache: dict[str, Any], path: Path = CACHE_PATH) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(cache))
+    except OSError as error:  # a cache we cannot write is not worth failing a run for
+        log(f"cache not written: {error.strerror}")
+
+
+def from_cache(entry: Any, reason: str, now: datetime) -> dict[str, Any] | None:
+    """The cached provider, re-dated and flagged, or None when it is too old."""
+    if not isinstance(entry, dict) or not entry.get("windows"):
+        return None
+    measured = normalize_iso(entry.get("measured_at"))
+    if not measured:
+        return None
+    age = (now - datetime.fromisoformat(measured.replace("Z", "+00:00"))).total_seconds()
+    if age < 0 or age > CACHE_MAX_AGE:
+        return None
+    extra = dict(entry.get("extra") or {})
+    extra.update({"error": reason, "measured_at": measured, "age_seconds": int(age)})
+    return {"plan": entry.get("plan"), "windows": entry["windows"], "extra": extra}
+
+
+def collect(cache: dict[str, Any] | None = None) -> dict[str, Any]:
     """One provider failing must never take the others down.
 
     A provider that is not set up on this Mac at all is left **out** of the payload rather
     than reported empty: every client hides a provider it gets no data for, and an empty
     Gemini card would be worse than no card until Thomas has signed the CLI in once.
+
+    A provider that *is* set up but fails transiently — Claude answers HTTP 429 for half
+    an hour at a time — is served from the last good reading instead, carrying the age it
+    was measured at. Sending it empty made the card vanish from every screen, and made the
+    TRMNL board read the absent value as 0% used, i.e. a full ring.
     """
+    now = datetime.now(timezone.utc)
+    # Only a run that owns the on-disk cache writes it back; tests pass their own.
+    owns_cache = cache is None
+    cache = read_cache() if owns_cache else cache
     providers: dict[str, Any] = {}
     for name, collector in (("claude", collect_claude), ("codex", collect_codex), ("gemini", collect_gemini)):
         try:
             providers[name] = collector()
+            cache[name] = {
+                "plan": providers[name].get("plan"),
+                "windows": providers[name].get("windows", []),
+                "measured_at": iso(now),
+            }
         except GeminiUnavailable:
             # Never set up on this Mac: no card, and no line in a log that runs every
             # few minutes forever. `summary()` already says which providers were read.
             pass
         except Exception as error:  # noqa: BLE001 - a partial report beats no report
             reason = describe(error)
-            log(f"{name}: {reason}")
-            providers[name] = {"plan": None, "windows": [], "extra": {"error": reason}}
-    return {"collected_at": iso(datetime.now(timezone.utc)), "providers": providers}
+            fallback = from_cache(cache.get(name), reason, now)
+            log(f"{name}: {reason}" + (f" (serving the reading from {fallback['extra']['measured_at']})" if fallback else ""))
+            providers[name] = fallback or {"plan": None, "windows": [], "extra": {"error": reason}}
+    if owns_cache:
+        write_cache(cache)
+    return {"collected_at": iso(now), "providers": providers}
 
 
 FALLBACK_WORKER_URL = "https://quota.mcp-tools-lab.workers.dev"
@@ -529,12 +584,13 @@ def _post(base_url: str, config: dict[str, Any], snapshot: dict[str, Any]) -> No
 def summary(snapshot: dict[str, Any]) -> str:
     parts = []
     for name, provider in snapshot["providers"].items():
-        if provider["windows"]:
-            parts.append(
-                f"{name} " + " ".join(f"{w['id']}={w['percent']}%" for w in provider["windows"])
-            )
-        else:
+        if not provider["windows"]:
             parts.append(f"{name} error")
+            continue
+        cached = " (cached)" if (provider.get("extra") or {}).get("measured_at") else ""
+        parts.append(
+            f"{name} " + " ".join(f"{w['id']}={w['percent']}%" for w in provider["windows"]) + cached
+        )
     return " | ".join(parts)
 
 

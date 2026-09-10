@@ -73,10 +73,6 @@ export function isStale(age: number): boolean {
   return age > STALE_SECONDS;
 }
 
-function windowOf(p: Provider | undefined, id: string): Window | undefined {
-  return p?.windows?.find((w) => w.id === id);
-}
-
 /** One flat history sample per ingest. */
 export function historyPoint(snapshot: Snapshot): HistoryPoint {
   const point: HistoryPoint = { t: snapshot.collected_at };
@@ -165,51 +161,55 @@ export function buildStatus(
   };
 }
 
-/**
- * The windows a provider declares, in the order it declared them. Gemini names its windows
- * after the models it meters, so nothing downstream may assume `session` / `weekly` exist.
- */
-function declaredWindows(p: Provider | undefined): Window[] {
-  return Array.isArray(p?.windows) ? p.windows : [];
-}
-
-/** Flat variables for the TRMNL webhook (max 2 kb of payload). */
+/** Flat presentation variables; v1/status and the stored snapshot are unchanged. */
 export function buildMergeVariables(
   status: StatusBody,
   now: number,
 ): Record<string, string | number | boolean> {
-  const claude = status.providers.claude;
-  const codex = status.providers.codex;
-  const gemini = status.providers.gemini;
+  const word = status.display === 'used' ? 'used' : 'left';
+  const state = (used: number) => used > 85 ? 'critical' : used >= 60 ? 'warn' : 'ok';
+  const wording = { ok: 'Ready', warn: 'Running low', critical: 'Nearly empty' };
+  // Keep formatting local to the TRMNL adapter: no change to other Worker logic.
+  const reset = (at: string | null) => {
+    const time = at ? Date.parse(at) : NaN;
+    if (!Number.isFinite(time)) return 'Reset time unknown';
+    if (time <= now) return 'Reset due';
+    const minutes = Math.ceil((time - now) / 60000);
+    if (minutes < 60) return `Resets in ${minutes} min`;
+    if (minutes < 1440) return `Resets in ${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+    return `Resets in ${Math.floor(minutes / 1440)} d ${Math.floor(minutes % 1440 / 60)} h`;
+  };
   const vars: Record<string, string | number | boolean> = {
-    severity: status.severity,
+    layout_version: 2,
+    display_word: word,
     updated: formatClock(status.collected_at),
     stale: status.stale,
   };
-  const pairs: Array<[string, Provider | undefined, string]> = [
-    ['claude_session', claude, 'session'],
-    ['claude_weekly', claude, 'weekly'],
-    ['codex_session', codex, 'session'],
-    ['codex_weekly', codex, 'weekly'],
-    ['codex_reserve', codex, 'reserve'],
-  ];
-  for (const [key, provider, id] of pairs) {
-    const w = windowOf(provider, id);
-    vars[key] = typeof w?.percent === 'number' ? Math.round(w.percent) : 0;
-    vars[`${key}_resets_in`] = formatResetsIn(w?.resets_at, now);
-  }
-
-  // Gemini is positional, not named: the collector sends its buckets most-consumed first,
-  // so window 0 is the headline and window 1 is the secondary. `gemini_present` is what the
-  // template branches on — an absent Gemini must draw no column at all, not an empty one.
-  const geminiWindows = declaredWindows(gemini);
-  vars.gemini_present = geminiWindows.length > 0;
-  vars.gemini_plan = gemini?.plan ?? '';
-  for (const [index, key] of [[0, 'gemini_session'], [1, 'gemini_weekly']] as const) {
-    const w = geminiWindows[index];
-    vars[key] = typeof w?.percent === 'number' ? Math.round(w.percent) : 0;
-    vars[`${key}_label`] = w?.label ?? '';
-    vars[`${key}_resets_in`] = formatResetsIn(w?.resets_at, now);
+  for (const id of ['claude', 'codex', 'gemini']) {
+    const provider = status.providers[id];
+    vars[`${id}_present`] = !!provider;
+    // Stable ties preserve declared order. No particular window id has priority.
+    const windows = (provider?.windows ?? [])
+      .filter(w => Number.isFinite(w.percent) && w.percent >= 0 && w.percent <= 100)
+      .map((w, order) => ({ ...w, order }))
+      .sort((a, b) => b.percent - a.percent || a.order - b.order);
+    const hero = windows[0];
+    vars[`${id}_has_value`] = !!hero;
+    if (!provider) continue;
+    const plan = provider.plan ?? '';
+    const titlePlan = plan ? plan[0].toUpperCase() + plan.slice(1) : '';
+    vars[`${id}_plan`] = id === 'codex'
+      ? (/^chatgpt/i.test(plan) ? plan : `ChatGPT ${titlePlan}`.trim())
+      : [id === 'claude' ? 'Anthropic' : 'Google', titlePlan].filter(Boolean).join(' · ');
+    if (!hero) continue; // Missing is never zero used / 100 left.
+    const shown = (used: number) => word === 'used' ? Math.round(used) : 100 - Math.round(used);
+    vars[`${id}_value`] = shown(hero.percent);
+    vars[`${id}_label`] = hero.label || hero.id;
+    vars[`${id}_reset`] = reset(hero.resets_at);
+    vars[`${id}_state`] = status.stale ? 'stale' : state(hero.percent);
+    vars[`${id}_state_label`] = status.stale ? 'Out of date' : wording[state(hero.percent)];
+    // Text is deliberately secondary. Reserve has no bespoke treatment.
+    vars[`${id}_detail`] = windows.slice(1).map(w => `${w.label || w.id} ${shown(w.percent)}% ${word}`).join(' · ');
   }
   return vars;
 }

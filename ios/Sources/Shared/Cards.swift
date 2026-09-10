@@ -7,7 +7,7 @@ struct SeverityPill: View {
     var compact: Bool = false
 
     private var color: Color { QuotaTheme.color(for: severity) }
-    private var text: String { severity == .stale ? "STALE" : severity.label }
+    private var text: String { severity.label }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -52,8 +52,9 @@ struct PlanChip: View {
 struct BrandMark: View {
     let providerName: String
     var size: CGFloat = 32
+    var stale: Bool = false
 
-    private var accent: Color { QuotaTheme.accent(for: providerName) }
+    private var accent: Color { stale ? QuotaTheme.stale : QuotaTheme.accent(for: providerName) }
 
     private var assetName: String? {
         switch providerName.lowercased() {
@@ -68,7 +69,7 @@ struct BrandMark: View {
     /// a different logo. Xcode's SVG subset does not render lobehub's four overlapping
     /// gradients, so the vendored single-path star is filled with the brand sweep instead —
     /// same colours, one shape, and it survives every rendering scale.
-    private var isGemini: Bool { providerName.lowercased() == "gemini" }
+    private var isGemini: Bool { !stale && providerName.lowercased() == "gemini" }
 
     var body: some View {
         RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
@@ -144,65 +145,66 @@ func providerSubtitle(_ name: String) -> String? {
     }
 }
 
-/// One provider: its mark, its name and plan, then its windows as rings side by side.
+/// The plan is a subtitle, never a competing badge.
+func providerPlanSubtitle(_ name: String, plan: String?) -> String {
+    let raw = plan ?? ""
+    let title = raw.prefix(1).uppercased() + String(raw.dropFirst())
+    if name.lowercased() == "codex" {
+        return raw.lowercased().hasPrefix("chatgpt") ? raw : (raw.isEmpty ? "ChatGPT" : "ChatGPT \(title)")
+    }
+    return [providerSubtitle(name) ?? "", title].filter { !$0.isEmpty }.joined(separator: " · ")
+}
+
+/// One hero per provider; every other window is quiet text with identical treatment.
 struct ProviderCard: View {
     let name: String
     let provider: ProviderStatus
     var mode: DisplayMode = .remaining
     var stale: Bool = false
     var now: Date = Date()
-    /// The width the card itself will occupy. The rings are sized from it rather than from a
-    /// GeometryReader inside the card, so the card keeps its intrinsic height and no dead
-    /// space is left under a two-ring provider.
     var availableWidth: CGFloat = 358
-
     @Environment(\.palette) private var palette
 
-    private var accent: Color { QuotaTheme.accent(for: name) }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                BrandMark(providerName: name)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(name)
-                        .font(.system(size: 20, weight: .bold))
+        HStack(alignment: .center, spacing: 16) {
+            if let hero = provider.primaryWindows(limit: 1).first {
+                RingGauge(value: hero.value(mode), severity: stale ? .stale : hero.severity,
+                          mode: mode, diameter: 112, stroke: 8, valueScale: 0.29)
+                VStack(alignment: .leading, spacing: 8) {
+                    identity
+                    Text(hero.label.isEmpty ? hero.id : hero.label)
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(palette.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    if let subtitle = providerSubtitle(name) {
-                        Text(subtitle)
-                            .font(.system(size: 13))
+                    Text(QuotaFormat.resetLine(hero, now: now) ?? "Reset time unknown")
+                        .font(.system(size: 12)).monospacedDigit()
+                        .foregroundStyle(palette.textSecondary)
+                    ForEach(provider.primaryWindows(limit: provider.windows.count).dropFirst()) { window in
+                        Text("\(window.label.isEmpty ? window.id : window.label) \(window.value(mode))% \(mode.caption)")
+                            .font(.system(size: 12)).monospacedDigit()
                             .foregroundStyle(palette.textSecondary)
-                            .lineLimit(1)
                     }
                 }
-                if let plan = provider.plan, !plan.isEmpty {
-                    PlanChip(plan: plan, accent: accent)
-                }
-                Spacer(minLength: 0)
-            }
-
-            HStack(alignment: .top, spacing: ringSpacing) {
-                ForEach(provider.windows) { window in
-                    WindowGauge(window: window, mode: mode, stale: stale, diameter: ringDiameter, now: now)
-                        .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    identity
+                    Text("No data").foregroundStyle(palette.textSecondary)
                 }
             }
-            .frame(maxWidth: .infinity)
         }
-        .padding(20)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(palette.surface, in: RoundedRectangle(cornerRadius: QuotaTheme.cardRadius, style: .continuous))
     }
 
-    private var ringSpacing: CGFloat { provider.windows.count >= 3 ? 20 : 12 }
-
-    private var ringDiameter: CGFloat {
-        let count = max(provider.windows.count, 1)
-        let inner = availableWidth - 40 - ringSpacing * CGFloat(count - 1)
-        // Capped so a provider reporting two windows and one reporting three still read as
-        // the same product on the same screen.
-        return min(max(inner / CGFloat(count), 64), 124)
+    private var identity: some View {
+        HStack(spacing: 8) {
+            BrandMark(providerName: name, size: 24, stale: stale)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name).font(.system(size: 20, weight: .semibold)).foregroundStyle(palette.textPrimary)
+                Text(providerPlanSubtitle(name, plan: provider.plan))
+                    .font(.system(size: 12)).foregroundStyle(palette.textSecondary)
+            }
+        }
     }
 }

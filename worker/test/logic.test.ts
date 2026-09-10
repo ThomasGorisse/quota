@@ -156,19 +156,39 @@ describe('history', () => {
 });
 
 describe('merge variables', () => {
-  it('flattens everything the TRMNL template needs', () => {
+  it('flattens one hero and one detail line per provider', () => {
     const status = buildStatus(snapshot(), [], DEFAULT_SETTINGS, NOW);
     const v = buildMergeVariables(status, NOW);
-    expect(v.claude_session).toBe(11);
-    expect(v.claude_weekly).toBe(60);
-    expect(v.codex_session).toBe(12);
-    expect(v.codex_weekly).toBe(6);
-    expect(v.codex_reserve).toBe(10);
-    expect(v.claude_session_resets_in).toBe('2h 10m');
-    expect(v.severity).toBe('warn');
+    expect(v.layout_version).toBe(2);
+    expect(v.display_word).toBe('left');
     expect(v.updated).toBe('18:00');
     expect(v.stale).toBe(false);
+    // The hero is the window with the highest USED percent, never a fixed id.
+    expect(v.claude_present).toBe(true);
+    expect(v.claude_has_value).toBe(true);
+    expect(v.claude_plan).toBe('Anthropic · Max');
+    expect(v.claude_label).toBe('Week');
+    expect(v.claude_value).toBe(40);
+    expect(v.claude_reset).toBe('Resets in 2 d 18 h');
+    expect(v.claude_state).toBe('warn');
+    expect(v.claude_state_label).toBe('Running low');
+    expect(v.claude_detail).toBe('5 h 89% left');
+    expect(v.codex_plan).toBe('ChatGPT Plus');
+    expect(v.codex_label).toBe('5 h');
+    expect(v.codex_value).toBe(88);
+    expect(v.codex_reset).toBe('Resets in 1 h 38 min');
+    expect(v.codex_state).toBe('ok');
+    expect(v.codex_state_label).toBe('Ready');
+    expect(v.codex_detail).toBe('Reserve 90% left · Week 94% left');
     expect(JSON.stringify(v).length).toBeLessThan(2048);
+  });
+
+  it('counts the used percent when the display says used', () => {
+    const status = buildStatus(snapshot(), [], { ...DEFAULT_SETTINGS, display: 'used' }, NOW);
+    const v = buildMergeVariables(status, NOW);
+    expect(v.display_word).toBe('used');
+    expect(v.claude_value).toBe(60);
+    expect(v.claude_detail).toBe('5 h 11% used');
   });
 
   it('formats countdowns', () => {
@@ -179,32 +199,65 @@ describe('merge variables', () => {
     expect(formatClock('nope')).toBe('--:--');
   });
 
-  it('defaults a missing provider to zero instead of throwing', () => {
+  it('never turns a missing window into 100% left', () => {
+    // Regression: a ChatGPT Pro plan has no `session` window. The board used to
+    // read the absent value as 0% used and print a full Codex ring.
+    const base = snapshot();
+    const noSession: Snapshot = {
+      ...base,
+      providers: {
+        ...base.providers,
+        codex: { plan: 'chatgpt pro 5x', windows: [], extra: undefined },
+      },
+    };
+    const v = buildMergeVariables(buildStatus(noSession, [], DEFAULT_SETTINGS, NOW), NOW);
+    expect(v.codex_present).toBe(true);
+    expect(v.codex_has_value).toBe(false);
+    expect(v.codex_value).toBeUndefined();
+    expect(v.codex_reset).toBeUndefined();
+    expect(v.codex_state).toBeUndefined();
+    expect(v.codex_plan).toBe('chatgpt pro 5x');
+  });
+
+  it('says nothing at all about a provider the collector never sent', () => {
     const status = buildStatus({ collected_at: '2026-09-09T18:00:00Z', providers: {} }, [], DEFAULT_SETTINGS, NOW);
     const v = buildMergeVariables(status, NOW);
-    expect(v.codex_reserve).toBe(0);
-    expect(v.codex_reserve_resets_in).toBe('');
+    expect(v.codex_present).toBe(false);
+    expect(v.codex_has_value).toBe(false);
+    expect(v.codex_plan).toBeUndefined();
+    expect(v.codex_value).toBeUndefined();
   });
 
   it('says Gemini is absent when the collector skipped it', () => {
     const v = buildMergeVariables(buildStatus(snapshot(), [], DEFAULT_SETTINGS, NOW), NOW);
     expect(v.gemini_present).toBe(false);
-    expect(v.gemini_session).toBe(0);
-    expect(v.gemini_session_label).toBe('');
+    expect(v.gemini_has_value).toBe(false);
+    expect(v.gemini_value).toBeUndefined();
   });
 
-  it('flattens Gemini positionally, headline first', () => {
+  it('flattens Gemini through the same hero rule', () => {
     const v = buildMergeVariables(buildStatus(withGemini(), [], DEFAULT_SETTINGS, NOW), NOW);
     expect(v.gemini_present).toBe(true);
-    expect(v.gemini_plan).toBe('Standard');
-    expect(v.gemini_session).toBe(62);
-    expect(v.gemini_session_label).toBe('3 Pro');
-    expect(v.gemini_session_resets_in).toBe('5h 15m');
-    expect(v.gemini_weekly).toBe(29);
-    expect(v.gemini_weekly_label).toBe('2.5 Pro');
+    expect(v.gemini_plan).toBe('Google · Standard');
+    expect(v.gemini_label).toBe('3 Pro');
+    expect(v.gemini_value).toBe(38);
+    expect(v.gemini_reset).toBe('Resets in 5 h 15 min');
+    expect(v.gemini_state).toBe('warn');
+    expect(v.gemini_detail).toBe('2.5 Pro 71% left');
     expect(JSON.stringify(v).length).toBeLessThan(2048);
   });
+
+  it('marks every provider out of date when the snapshot is stale', () => {
+    const v = buildMergeVariables(
+      buildStatus(snapshot(11, 60, '2026-09-09T17:00:00Z'), [], DEFAULT_SETTINGS, NOW),
+      NOW,
+    );
+    expect(v.stale).toBe(true);
+    expect(v.claude_state).toBe('stale');
+    expect(v.claude_state_label).toBe('Out of date');
+  });
 });
+
 
 describe('a third provider', () => {
   it('rides the same contract with no id the worker knows', () => {
