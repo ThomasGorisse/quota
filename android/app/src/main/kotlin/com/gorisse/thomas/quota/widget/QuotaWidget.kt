@@ -62,6 +62,9 @@ class QuotaWidget : GlanceAppWidget() {
         val snapshot = repository.snapshot.value
         // The widget never asks the server anything: it prints the last cached choice.
         val mode = repository.displayMode.value
+        // Sample data has to be legible on the home screen too: a widget showing invented
+        // numbers with nothing saying so is indistinguishable from a real one.
+        val demo = repository.isDemo
         provideContent {
             GlanceTheme {
                 val size = LocalSize.current
@@ -82,9 +85,9 @@ class QuotaWidget : GlanceAppWidget() {
                             style = TextStyle(color = secondaryText(), fontSize = 12.sp),
                         )
                     } else if (wide) {
-                        LargeContent(snapshot, mode)
+                        LargeContent(snapshot, mode, demo)
                     } else {
-                        SmallContent(snapshot, mode)
+                        SmallContent(snapshot, mode, demo)
                     }
                 }
             }
@@ -99,7 +102,7 @@ class QuotaWidget : GlanceAppWidget() {
 
 /** One overall hero, even with two providers. A tiny host loses the ring before the unit. */
 @Composable
-private fun SmallContent(snapshot: Snapshot, mode: DisplayMode) {
+private fun SmallContent(snapshot: Snapshot, mode: DisplayMode, demo: Boolean = false) {
     val hero = snapshot.glanceHero()
     if (hero == null) {
         Text("No data", style = TextStyle(color = secondaryText(), fontSize = 12.sp))
@@ -129,7 +132,8 @@ private fun SmallContent(snapshot: Snapshot, mode: DisplayMode) {
                     style = TextStyle(color = primaryText(), fontSize = 11.sp,
                         fontWeight = FontWeight.Medium), maxLines = 1)
             }
-            Text(if (stale) "Out of date" else formatResetsIn(window.resetsIn()),
+            val reset = if (stale) "Out of date" else formatResetsIn(window.resetsIn())
+            Text(if (demo) "Sample data · $reset" else reset,
                 style = TextStyle(color = secondaryText(), fontSize = 10.sp), maxLines = 2)
         }
     }
@@ -137,7 +141,7 @@ private fun SmallContent(snapshot: Snapshot, mode: DisplayMode) {
 
 /** One overall hero plus plain provider headlines; no secondary rings. */
 @Composable
-private fun LargeContent(snapshot: Snapshot, mode: DisplayMode) {
+private fun LargeContent(snapshot: Snapshot, mode: DisplayMode, demo: Boolean = false) {
     val hero = snapshot.glanceHero()
     val stale = snapshot.isStale()
     if (hero == null) {
@@ -151,7 +155,7 @@ private fun LargeContent(snapshot: Snapshot, mode: DisplayMode) {
         Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
             SeverityDot(if (stale) Severity.STALE else window.severity)
             Spacer(GlanceModifier.size(8.dp))
-            Text("Quota · ${if (stale) Severity.STALE.glanceLabel() else window.severity.glanceLabel()}",
+            Text("${if (demo) "Sample data" else "Quota"} · ${if (stale) Severity.STALE.glanceLabel() else window.severity.glanceLabel()}",
                 style = TextStyle(color = primaryText(), fontSize = 12.sp,
                     fontWeight = FontWeight.Medium), maxLines = 1)
         }

@@ -84,7 +84,7 @@ class PairingStore(context: Context) {
         prefs.edit().remove(KEY_HOST).remove(KEY_TOKEN).apply()
     }
 
-    /** Debug-only: render the UI from a canned payload before the backend exists. */
+    /** Sample-data mode: render the UI from a canned payload, backend untouched. */
     var demoData: Boolean
         get() = prefs.getBoolean(KEY_DEMO, false)
         set(value) {

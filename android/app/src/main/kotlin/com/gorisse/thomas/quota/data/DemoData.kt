@@ -6,9 +6,10 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * A canned `/v1/status` used by the debug-only "demo data" toggle, so the screens and the
- * widget can be validated before the backend is deployed. Reset times are relative to now,
- * which is what makes the "resets in …" line worth looking at.
+ * A canned `/v1/status` behind "Try with sample data" on the pairing screen — shipped in
+ * release too, so the app is explorable without a collector, a store reviewer included.
+ * Reset times are relative to now, which is what makes the "resets in …" line worth looking
+ * at. Nothing here ever reaches the network: [StatusRepository.refresh] returns it directly.
  *
  * The numbers deliberately cover the three severities: an ok 5 h window, a warn week, and a
  * critical Codex session.

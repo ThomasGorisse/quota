@@ -28,8 +28,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,7 +43,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
-import com.gorisse.thomas.quota.BuildConfig
 import com.gorisse.thomas.quota.data.DEFAULT_HOST
 import com.gorisse.thomas.quota.data.ProviderId
 import com.gorisse.thomas.quota.data.Pairing
@@ -56,6 +55,10 @@ import com.gorisse.thomas.quota.ui.theme.Dimens
  * The scan uses Play Services' code scanner rather than CameraX + ML Kit, because it runs the
  * camera in the Play Services process: no `CAMERA` permission in the manifest, nothing to ask
  * the user, and no preview surface to get wrong.
+ *
+ * "Try with sample data" ships in every build type, release included: without it the app is
+ * a dead end for anyone who has not run the collector — a store reviewer first of all. It
+ * loads [DemoData] locally and never touches the backend.
  */
 @Composable
 fun PairingScreen(
@@ -67,7 +70,6 @@ fun PairingScreen(
     val context = LocalContext.current
     var url by remember { mutableStateOf("") }
     var errorText by remember { mutableStateOf<String?>(null) }
-    var demoEnabled by remember { mutableStateOf(false) }
 
     fun submit(candidate: String) {
         val pairing = parsePairingUrl(candidate)
@@ -192,37 +194,21 @@ fun PairingScreen(
         Text("Your Claude and ChatGPT credentials stay on your Mac. Only usage and reset times are synced.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-        if (BuildConfig.DEMO_DATA_AVAILABLE) {
-            Card(
-                shape = RoundedCornerShape(Dimens.CardRadius),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier.fillMaxWidth(),
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            TextButton(
+                onClick = onDemoData,
+                modifier = Modifier.heightIn(min = 48.dp),
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(Dimens.Grid * 2),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Demo data",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            text = "Explore the app and widgets with sample usage.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = demoEnabled,
-                        onCheckedChange = { checked ->
-                            demoEnabled = checked
-                            if (checked) onDemoData()
-                        },
-                    )
-                }
+                Text("Try with sample data")
             }
+            Text(
+                text = "Fills the app and the widgets with example Claude, Codex and Gemini usage. Nothing leaves the phone, and the “Leave sample data” button at the top of the screen brings you back here.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

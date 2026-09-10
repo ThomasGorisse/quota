@@ -47,7 +47,8 @@ first upload:
 ## 2. Versioning
 
 `versionName` is `1.0.0`, overridable with `-PVERSION_NAME`. `versionCode` comes from
-`-PVERSION_CODE` and defaults to `1`. The workflow passes epoch-minutes
+`-PVERSION_CODE` and defaults to `3` — the code of the first build carrying sample-data
+mode, and the one the internal track serves. The workflow passes epoch-minutes
 (`$(date +%s) / 60`), which is monotonic and cannot collide with a code Play has already
 accepted — Play never forgets a versionCode, including one from a deleted release.
 

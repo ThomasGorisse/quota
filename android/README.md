@@ -17,9 +17,15 @@ Compose BOM 2026.06.01, compileSdk 36 — the set already known to work on this 
 
 ## Seeing it without a backend
 
-The pairing screen carries a **Demo data** switch that only exists in debug builds
-(`BuildConfig.DEMO_DATA_AVAILABLE`). It fills the repository — and therefore the widget — with
-`DemoData`, whose numbers cover the three severities and whose reset times are relative to now.
+The pairing screen carries a **Try with sample data** button, in every build type including
+release. It fills the repository — and therefore the widget — with `DemoData`, whose numbers
+cover the three severities and whose reset times are relative to now. Nothing is fetched: the
+repository short-circuits before the API, so the mode is offline by construction.
+
+It is not a hidden developer affordance, it is the answer to Play's "Sign-in details" form —
+an app whose whole value needs a paired Mac is otherwise a blank screen to a reviewer. While
+it is on, a persistent **Sample data** chip sits in the app header and on both widget sizes,
+and the header's link-off button reads *Leave sample data*.
 
 The widget itself can be captured without dragging anything onto a launcher:
 

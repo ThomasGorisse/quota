@@ -40,9 +40,9 @@ fun HomeScreen(
     var confirmUnpair by remember { mutableStateOf(false) }
     if (confirmUnpair) {
         AlertDialog(onDismissRequest = { confirmUnpair = false },
-            title = { Text(if (demo) "Leave demo?" else "Disconnect this phone?") },
-            text = { Text(if (demo) "Return to pairing to connect your own usage." else "You can reconnect with your pairing link. Your widgets will return to the pairing state.") },
-            confirmButton = { TextButton(onClick = { confirmUnpair = false; onUnpair() }) { Text(if (demo) "Leave demo" else "Disconnect") } },
+            title = { Text(if (demo) "Leave sample data?" else "Disconnect this phone?") },
+            text = { Text(if (demo) "The sample numbers go away and you return to pairing, where you can connect your own usage." else "You can reconnect with your pairing link. Your widgets will return to the pairing state.") },
+            confirmButton = { TextButton(onClick = { confirmUnpair = false; onUnpair() }) { Text(if (demo) "Leave sample data" else "Disconnect") } },
             dismissButton = { TextButton(onClick = { confirmUnpair = false }) { Text("Cancel") } })
     }
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -98,11 +98,10 @@ private fun Header(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             QuotaWordmark(Modifier.weight(1f))
-            if (demo) Text("Demo", style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp))
+            if (demo) SampleDataChip(Modifier.padding(end = 8.dp))
             SeverityPill(severity)
             IconButton(onClick = onUnpair) {
-                Icon(Icons.Filled.LinkOff, if (demo) "Leave demo" else "Disconnect this phone",
+                Icon(Icons.Filled.LinkOff, if (demo) "Leave sample data" else "Disconnect this phone",
                     Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -144,6 +143,25 @@ private fun DisplayToggle(mode: DisplayMode, onModeChange: (DisplayMode) -> Unit
             }
         }
     }
+}
+
+/**
+ * Persistent, never dismissable: while the app runs on [DemoData] every screen has to say so,
+ * or a screenshot of it reads as someone's real usage. Same 12 dp chip radius as the severity
+ * pill next to it, but outlined rather than tinted — severity owns the colour here.
+ */
+@Composable
+private fun SampleDataChip(modifier: Modifier = Modifier) {
+    Text(
+        text = "Sample data",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier
+            .clip(RoundedCornerShape(Dimens.ChipRadius))
+            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .10f))
+            .padding(horizontal = 8.dp, vertical = 8.dp)
+            .semantics { contentDescription = "Showing sample data, not your own usage" },
+    )
 }
 
 @Composable

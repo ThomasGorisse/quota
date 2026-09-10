@@ -32,7 +32,7 @@ android {
         minSdk = 26
         targetSdk = 36
         // Play refuses a versionCode it has already seen; CI passes -PVERSION_CODE=<n>.
-        versionCode = (project.findProperty("VERSION_CODE") as String?)?.toInt() ?: 1
+        versionCode = (project.findProperty("VERSION_CODE") as String?)?.toInt() ?: 3
         // Overridable so a tag build can stamp its own name; 1.0.0 is the real default.
         versionName = (project.findProperty("VERSION_NAME") as String?) ?: "1.0.0"
     }
@@ -49,12 +49,7 @@ android {
     }
 
     buildTypes {
-        debug {
-            // The "demo data" toggle on the pairing screen only exists in debug.
-            buildConfigField("boolean", "DEMO_DATA_AVAILABLE", "true")
-        }
         release {
-            buildConfigField("boolean", "DEMO_DATA_AVAILABLE", "false")
             signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             isShrinkResources = true

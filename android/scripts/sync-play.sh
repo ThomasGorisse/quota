@@ -63,9 +63,9 @@ if [[ -z "$ALLOW_DIRTY" ]]; then
 fi
 
 # --- versionCode ------------------------------------------------------------------------
-# Default 1, matching app/build.gradle.kts; bump explicitly, Play never forgets a code.
+# Default 3, matching app/build.gradle.kts; bump explicitly, Play never forgets a code.
 if [[ -z "$VERSION_CODE" ]]; then
-  VERSION_CODE="${VERSION_CODE_OVERRIDE:-1}"
+  VERSION_CODE="${VERSION_CODE_OVERRIDE:-3}"
 fi
 [[ "$VERSION_CODE" =~ ^[0-9]+$ ]] || die "versionCode must be an integer, got '$VERSION_CODE'"
 
