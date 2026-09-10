@@ -56,8 +56,9 @@ struct HomeView: View {
                 .minimumScaleFactor(0.7)
             Spacer(minLength: 0)
             if model.snapshot?.isDemo == true {
-                Text("DEMO")
-                    .font(.system(size: 11, weight: .bold))
+                // "Demo", like the web and Android chips: one word, one case, everywhere.
+                Text("Demo")
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(palette.textSecondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)

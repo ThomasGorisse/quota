@@ -69,33 +69,22 @@ fun RingGauge(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Dimens.Grid),
     ) {
-        if (showDetails) Text(
-            text = window.label,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
         Box(contentAlignment = Alignment.Center) {
             Ring(
                 fraction = sweep,
                 color = color,
                 diameter = diameter,
-                stroke = if (showDetails) Dimens.RingStroke else 6.dp,
+                stroke = if (showDetails) Dimens.RingStroke else 8.dp,
             )
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = "${window.shown(mode)}",
-                        style = MaterialTheme.typography.displayMedium,
-                        fontSize = (diameter.value * 0.36f).sp,
-                        lineHeight = (diameter.value * 0.36f).sp,
-                        letterSpacing = (-1.5).sp,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text("%", fontSize = (diameter.value * 0.13f).sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(bottom = (diameter.value * .025f).dp))
-                }
+                Text(
+                    text = "${window.shown(mode)}%",
+                    style = MaterialTheme.typography.displayMedium,
+                    fontSize = (diameter.value * 0.29f).sp,
+                    lineHeight = (diameter.value * 0.32f).sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
                 // The mode has to be readable at a glance, not guessed from the number.
                 Text(
                     text = word,
@@ -105,6 +94,11 @@ fun RingGauge(
                 )
             }
         }
+        if (showDetails) Text(
+            text = window.label,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         if (showDetails) Text(
             text = formatResetsIn(resetsIn),
             style = MaterialTheme.typography.bodySmall,

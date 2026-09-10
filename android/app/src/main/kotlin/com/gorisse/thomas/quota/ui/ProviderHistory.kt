@@ -31,7 +31,7 @@ fun ProviderHistory(
      * The two window ids to plot, primary first. Claude and Codex meter time windows, Gemini
      * meters models, so the series keys cannot be hardcoded here.
      */
-    windowIds: List<String> = listOf("session", "weekly"),
+    windowIds: List<String> = emptyList(),
 ) {
     val end = now.toEpochMilli()
     val start = end - 86_400_000L
@@ -58,7 +58,7 @@ fun ProviderHistory(
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (hasData) Canvas(Modifier.weight(1f).height(32.dp).semantics {
                 contentDescription = "Quota ${if (mode.isUsed) "used" else "remaining"} over the last 24 hours. " +
-                    "Solid line: 5 hour window. Dashed line: week."
+                    "Solid line: ${windowIds.getOrNull(0).orEmpty()}. Dashed line: ${windowIds.getOrNull(1).orEmpty()}."
             }) {
                 drawLine(line, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
                 listOf(false, true).forEach { weekly ->
