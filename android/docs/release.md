@@ -136,6 +136,22 @@ In order:
 
 After that, `sync-play.sh` and the tag workflow both work unattended for the internal track.
 
+## 4b. "Sign-in details", answered honestly
+
+Play asks how a reviewer reaches the app's functionality. Quota needs a Mac running the
+collector, which a reviewer does not have — so from versionCode 3 the pairing screen carries
+**Try with sample data**, in release as well as debug. Paste this into the form, with
+"credentials required" answered **no**:
+
+> The app does not require any sign-in or account. On the first screen, tap "Try with sample
+> data" to load the whole app and its widgets with example Claude, Codex and Gemini usage —
+> no credentials, no network access. A persistent "Sample data" chip in the header and on the
+> widgets marks the values as examples, and the button next to it, "Leave sample data",
+> returns to the first screen. Pairing with a real Mac is optional and only needed to see
+> your own usage.
+
+Keep that paragraph and the button's wording in step: the form is checked against the build.
+
 ## 5. Listing assets
 
 `android/play/` holds everything the listing needs, in a fastlane-ish layout:
