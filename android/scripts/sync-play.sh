@@ -81,7 +81,10 @@ fi
 # --- refusal 2: an unsigned bundle ------------------------------------------------------
 # Play rejects an unsigned upload with a vague error; catch it here where the cause is
 # obvious (the four QUOTA_UPLOAD_* properties are missing from ~/.gradle/gradle.properties).
-if ! unzip -l "$AAB" | grep -q 'META-INF/.*\.\(RSA\|DSA\|EC\)$'; then
+# `grep -q` would exit on the first hit, hand `unzip` a SIGPIPE, and `pipefail` would read
+# that as a failed check — a signed bundle then reports "unsigned" whenever grep wins the
+# race. `grep -c` drains the listing, so the verdict is the match count and nothing else.
+if [[ "$(unzip -l "$AAB" | grep -c 'META-INF/.*\.\(RSA\|DSA\|EC\)$')" == "0" ]]; then
   die "the AAB is not signed — the release build fell back to unsigned.
   Set QUOTA_UPLOAD_STORE_FILE / _STORE_PASSWORD / _KEY_ALIAS / _KEY_PASSWORD in
   ~/.gradle/gradle.properties. See android/docs/release.md."
