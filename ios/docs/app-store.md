@@ -26,8 +26,8 @@ and App Group sharing (CA92.1 / 1C8F.1), with no tracking. See
 
 ## Artifacts from this pass
 
-- Archive: `/tmp/Quota-1.0.0.xcarchive`
-- Export: `/tmp/Quota-AppStore/Quota.ipa`
+- Archive: `/tmp/Quota-1.0.0-fixed.xcarchive` (the one exported and uploaded)
+- Export: `/tmp/Quota-AppStore-fixed2/Quota.ipa`
 - Build log: `/tmp/quota-ios-verified.log`
 - Archive log: `/tmp/quota-ios-archive.log`
 - Export log: `/tmp/quota-ios-export.log`

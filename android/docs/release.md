@@ -54,7 +54,7 @@ first upload:
 
 `versionName` is `1.0.0`, overridable with `-PVERSION_NAME`. `versionCode` comes from
 `-PVERSION_CODE` and defaults to `3` — the code of the first build carrying sample-data
-mode, and the one the internal track serves. The workflow passes epoch-minutes
+mode, and the one both the internal and production tracks serve. The workflow passes epoch-minutes
 (`$(date +%s) / 60`), which is monotonic and cannot collide with a code Play has already
 accepted — Play never forgets a versionCode, including one from a deleted release.
 
@@ -167,11 +167,11 @@ play/
   listing/en-US/
     title.txt              "Quota — AI usage at a glance"   (28 / 30 chars)
     short-description.txt                                    (78 / 80)
-    full-description.txt                                     (2 467 / 4 000)
+    full-description.txt                                     (2 084 / 4 000)
     icon.png               512x512
     feature-graphic.png    1024x500
   screenshots/phone/
-    01-home-light.png  02-home-dark.png  03-home-error.png   (1080x2400, 9:16)
+    01-home-light.png  02-home-dark.png  03-onboarding.png   (1080x2400, 9:16)
 ```
 
 The icon and the feature graphic are generated, not hand-drawn:
