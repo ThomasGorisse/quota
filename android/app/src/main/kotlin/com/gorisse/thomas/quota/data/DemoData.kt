@@ -61,5 +61,5 @@ object DemoData {
     )
 
     private fun window(id: String, label: String, percent: Int, resetsAt: Instant) =
-        Window(id = id, label = label, percent = percent, resetsAt = resetsAt.toString())
+        Window(id = id, label = label, percent = percent.toDouble(), resetsAt = resetsAt.toString())
 }

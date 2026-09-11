@@ -66,7 +66,7 @@ enum DemoData {
 
     private static func window(_ id: String, _ label: String, used: Int,
                                in seconds: TimeInterval, from now: Date) -> Window {
-        Window(id: id, label: label, percent: used,
+        Window(id: id, label: label, percent: Double(used),
                resetsAt: ISO8601.string(now.addingTimeInterval(seconds)))
     }
 }

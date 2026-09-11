@@ -15,6 +15,10 @@ final class StatusViewModel: ObservableObject {
         didSet {
             guard demoData != oldValue else { return }
             store.demoData = demoData
+            snapshot = nil
+            store.snapshot = nil
+            errorMessage = nil
+            reloadWidgets()
             Task { await refresh() }
         }
     }
@@ -49,6 +53,7 @@ final class StatusViewModel: ObservableObject {
     // MARK: - Lifecycle
 
     func start() {
+        WatchSync.shared.start()
         guard ticker == nil else { return }
         ticker = Task { [weak self] in
             while !Task.isCancelled {
@@ -69,8 +74,12 @@ final class StatusViewModel: ObservableObject {
     func pair(with raw: String) -> String? {
         do {
             let pairing = try Pairing.parse(raw)
+            guard TokenStore.save(pairing.token) else {
+                return "Your pairing link could not be saved securely. Unlock your device and try again."
+            }
+            snapshot = nil
+            store.snapshot = nil
             store.host = pairing.host
-            TokenStore.save(pairing.token)
             isPaired = true
             errorMessage = nil
             Task { await refresh() }
@@ -121,11 +130,21 @@ final class StatusViewModel: ObservableObject {
     // MARK: - Refresh
 
     func refresh() async {
+        guard !isRefreshing else { return }
         guard demoData || isPaired else { return }
+        let requestedHost = store.host
+        let requestedToken = TokenStore.token()
+        let requestedDemo = demoData
         isRefreshing = true
-        defer { isRefreshing = false }
+        defer {
+            isRefreshing = false
+            if requestedHost != store.host || requestedToken != TokenStore.token() || requestedDemo != demoData {
+                Task { await refresh() }
+            }
+        }
         do {
-            let fresh = try await client.status(host: store.host, token: TokenStore.token(), demo: demoData)
+            let fresh = try await client.status(host: requestedHost, token: requestedToken, demo: requestedDemo)
+            guard requestedHost == store.host, requestedToken == TokenStore.token(), requestedDemo == demoData else { return }
             store.snapshot = fresh
             snapshot = fresh
             displayMode = fresh.display
@@ -133,12 +152,14 @@ final class StatusViewModel: ObservableObject {
             now = Date()
             reloadWidgets()
         } catch {
+            guard requestedHost == store.host, requestedToken == TokenStore.token(), requestedDemo == demoData else { return }
             // The last snapshot stays on screen; the stale rule greys it out on its own.
             errorMessage = error.localizedDescription
         }
     }
 
     private func reloadWidgets() {
+        WatchSync.shared.send()
         WidgetCenter.shared.reloadAllTimelines()
     }
 }

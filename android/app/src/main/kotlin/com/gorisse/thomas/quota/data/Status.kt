@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import java.time.Duration
 import java.time.Instant
+import kotlin.math.roundToInt
 
 /**
  * The `GET /v1/status` payload, exactly as specified in the repository README.
@@ -44,25 +45,31 @@ enum class DisplayMode(val wire: String) {
 
 @Serializable
 data class Provider(
+    val stale: Boolean = false,
+    @SerialName("measured_at") val measuredAt: String? = null,
     val plan: String? = null,
     val windows: List<Window> = emptyList(),
     val extra: Map<String, JsonElement> = emptyMap(),
-)
+) {
+    fun isStaleAt(nowMillis: Long = System.currentTimeMillis()): Boolean = stale ||
+        measuredAt?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
+            ?.let { nowMillis - it > Snapshot.STALE_AFTER_SECONDS * 1_000 } == true
+}
 
 @Serializable
 data class Window(
     val id: String,
     val label: String,
-    val percent: Int,
+    val percent: Double,
     @SerialName("resets_at") val resetsAt: String? = null,
 ) {
     /** What is left, which is the number worth reading. */
-    val remaining: Int get() = (100 - percent).coerceIn(0, 100)
+    val remaining: Int get() = 100 - percent.roundToInt().coerceIn(0, 100)
 
     val severity: Severity get() = Severity.ofUsedPercent(percent)
 
     /** The number to print in this mode: what is left, or what has been spent. */
-    fun shown(mode: DisplayMode): Int = if (mode.isUsed) percent.coerceIn(0, 100) else remaining
+    fun shown(mode: DisplayMode): Int = if (mode.isUsed) percent.roundToInt().coerceIn(0, 100) else remaining
 
     /** How much of the ring is swept: it drains in remaining mode, it grows in used mode. */
     fun fraction(mode: DisplayMode): Float = shown(mode) / 100f
@@ -83,7 +90,7 @@ enum class Severity(val wire: String) {
 
     companion object {
         /** README rule: `<60` ok, `60–85` warn, `>85` critical — on the percentage used. */
-        fun ofUsedPercent(percent: Int): Severity = when {
+        fun ofUsedPercent(percent: Double): Severity = when {
             percent > 85 -> CRITICAL
             percent >= 60 -> WARN
             else -> OK

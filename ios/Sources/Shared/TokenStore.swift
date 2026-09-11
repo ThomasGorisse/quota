@@ -13,7 +13,9 @@ import Security
 enum TokenStore {
 
     static let service = "com.gorisse.thomas.quota.token"
-    static let accessGroup = SharedStore.appGroup
+    static var accessGroup: String {
+        Bundle.main.object(forInfoDictionaryKey: "QuotaKeychainAccessGroup") as? String ?? SharedStore.appGroup
+    }
     static let account = "device-token"
 
     enum Backing: String {
@@ -59,6 +61,7 @@ enum TokenStore {
         let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
         if updateStatus == errSecSuccess {
             backing = .keychain
+            SharedStore.shared.fallbackToken = nil
             return true
         }
 
@@ -67,12 +70,18 @@ enum TokenStore {
         let addStatus = SecItemAdd(query as CFDictionary, nil)
         if addStatus == errSecSuccess {
             backing = .keychain
+            SharedStore.shared.fallbackToken = nil
             return true
         }
 
+        #if DEBUG
         backing = .appGroupDefaults
         SharedStore.shared.fallbackToken = token
+        return true
+        #else
+        // A shipping app must never persist a credential in plaintext preferences.
         return false
+        #endif
     }
 
     static func clear() {

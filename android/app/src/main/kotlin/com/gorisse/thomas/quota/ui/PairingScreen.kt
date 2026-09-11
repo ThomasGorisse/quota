@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -68,6 +69,7 @@ fun PairingScreen(
     pairingError: String? = null,
 ) {
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     var url by remember { mutableStateOf("") }
     var errorText by remember { mutableStateOf<String?>(null) }
 
@@ -97,12 +99,12 @@ fun PairingScreen(
             ProviderMark(ProviderId.GEMINI)
         }
         Text(
-            text = "Your AI usage,\nat a glance.",
-            style = MaterialTheme.typography.headlineMedium,
+            text = "A little clarity.\nMore room to create.",
+            style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
-            text = "Connect Claude, Codex and Gemini to see what’s left, when it resets, and how your usage changes.",
+            text = "Connect Claude, Codex and Gemini to see what’s left, when it resets, across your AI tools.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -121,8 +123,11 @@ fun PairingScreen(
                 verticalArrangement = Arrangement.spacedBy(Dimens.Grid * 2),
             ) {
                 Text("Connect your Mac", style = MaterialTheme.typography.titleLarge)
-                Text("Run the Quota collector on your Mac, then paste its pairing link or scan the QR code.",
+                Text("1. Open the Quota collector on your Mac.\n2. Copy its pairing link or scan its QR code.",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = { uriHandler.openUri("https://quota.sceneview.dev/setup.html") }) {
+                    Text("Set up Quota on your Mac ↗")
+                }
                 OutlinedTextField(
                     value = url,
                     onValueChange = {
@@ -191,7 +196,7 @@ fun PairingScreen(
             }
         }
 
-        Text("Your Claude and ChatGPT credentials stay on your Mac. Only usage and reset times are synced.",
+        Text("Your AI account credentials stay on your Mac. Only usage and reset times are synced.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
         Column(
@@ -205,7 +210,7 @@ fun PairingScreen(
                 Text("Try with sample data")
             }
             Text(
-                text = "Fills the app and the widgets with example Claude, Codex and Gemini usage. Nothing leaves the phone, and the “Leave sample data” button at the top of the screen brings you back here.",
+                text = "Explore the app and widgets before connecting. No account needed.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

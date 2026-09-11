@@ -1,3 +1,9 @@
+> Updated 11 September 2026: historical checklist below contains completed setup steps.
+> See [current platform/release state](../../docs/RELEASE-2026-09-11.md) before acting.
+> Quota’s hosted setup is https://quota.sceneview.dev/setup.html; the GitHub repository is private.
+> Disconnecting a client does not delete relay data. Snapshots expire seven days after the
+> last ingest and history after 24 hours. Store descriptions must match the public privacy policy.
+
 # Android release
 
 Everything needed to ship to Google Play exists in this repo, except the Play Console app

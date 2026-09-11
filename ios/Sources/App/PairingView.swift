@@ -13,22 +13,31 @@ struct PairingView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 28) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Quota")
-                        .font(.system(size: 34, weight: .bold))
+                    HStack(spacing: 12) {
+                        Image(systemName: "circle.dotted.circle.fill")
+                            .font(.system(size: 44, weight: .light))
+                            .foregroundStyle(QuotaTheme.ok)
+                        Text("Quota")
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.textPrimary)
-                    Text("Claude, Codex and Gemini limits, on every screen you look at.")
+                    }
+                    Text("Know what’s left.\nKeep your flow.")
+                        .font(.system(size: 32, weight: .semibold))
+                        .foregroundStyle(palette.textPrimary)
+                        .padding(.top, 20)
+                    Text("Claude, Codex and Gemini capacity. One calm place to check before your next idea.")
                         .font(.system(size: 16))
                         .foregroundStyle(palette.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Pairing URL")
+                    Text("Connect your collector")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(palette.textPrimary)
-                    Text("The collector prints it on first run and writes it to ~/.quota/pairing.txt. It carries the device token, so treat it as a credential.")
+                    Text("Run the Quota collector on your computer, then paste its private pairing link or scan the QR code.")
                         .font(.system(size: 13))
                         .foregroundStyle(palette.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -36,6 +45,7 @@ struct PairingView: View {
                     // The placeholder is drawn rather than passed to TextField so it takes the
                     // secondary text token instead of the system tint.
                     TextField("", text: $input, axis: .vertical)
+                        .accessibilityLabel("Private pairing link")
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
@@ -70,14 +80,14 @@ struct PairingView: View {
 
                     HStack(spacing: 12) {
                         Button { pair(input) } label: {
-                            Text("Pair")
+                            Text("Connect")
                                 .font(.system(size: 16, weight: .semibold))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 12)
                         }
                         .buttonStyle(.plain)
-                        .foregroundStyle(Color.white)
-                        .background(QuotaTheme.codex,
+                        .foregroundStyle(Color(hex: 0x102016))
+                        .background(QuotaTheme.ok,
                                     in: RoundedRectangle(cornerRadius: QuotaTheme.chipRadius, style: .continuous))
                         .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         .opacity(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
@@ -110,18 +120,25 @@ struct PairingView: View {
                 Button {
                     model.demoData = true
                 } label: {
-                    Label("Look at it with demo data", systemImage: "eye")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(palette.textSecondary)
+                    Label("Try sample data", systemImage: "sparkles")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(palette.textPrimary)
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                        .background(palette.surface, in: RoundedRectangle(cornerRadius: 16))
                 }
                 .buttonStyle(.plain)
 
-                Text("Nothing is sent anywhere but the host in that URL. No analytics, no third party.")
+                Link("Set up the free collector ↗", destination: URL(string: "https://quota.sceneview.dev/setup.html")!)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(palette.textPrimary)
+                    .frame(minHeight: 44)
+
+                Text("Your pairing link is private. Your data stays with your collector. No analytics or tracking.")
                     .font(.system(size: 12))
                     .foregroundStyle(palette.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(20)
+            .padding(24)
         }
         .scrollIndicators(.hidden)
         .sheet(isPresented: $showsScanner) {

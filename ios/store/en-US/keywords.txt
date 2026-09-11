@@ -1,1 +1,1 @@
-claude,codex,chatgpt,usage,limit,quota,rate limit,widget,gauge,developer,tokens,ai,monitor
+claude,codex,gemini,chatgpt,usage,limits,widget,developer,capacity,monitor,watch

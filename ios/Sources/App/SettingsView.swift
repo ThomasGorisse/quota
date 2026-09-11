@@ -28,7 +28,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Display")
                 } footer: {
-                    Text("Capacity left, or capacity spent. The setting lives on the backend, so the widgets, the watch, the web dashboard and the e-ink screen all follow.")
+                    Text("Choose the number that feels natural. Your widgets, Apple Watch and dashboard follow this preference.")
                 }
 
                 Section {
@@ -36,26 +36,28 @@ struct SettingsView: View {
                 } header: {
                     Text("Preview")
                 } footer: {
-                    Text("Fills the app, the widgets and the watch with a canned snapshot covering the three severities, so every screen can be checked without the backend.")
+                    Text("Explore Quota with sample limits. Turn this off to return to your connected collector.")
                 }
 
                 Section("Pairing") {
                     LabeledContent("Host", value: model.host ?? "not paired")
                     LabeledContent("Token", value: model.isPaired ? "stored" : "none")
-                    LabeledContent("Storage", value: model.tokenStorage)
-                        .font(.footnote)
-                    LabeledContent("App Group", value: model.isSharedContainer ? "shared" : "app only")
+                    DisclosureGroup("Connection details") {
+                        LabeledContent("Storage", value: model.tokenStorage).font(.footnote)
+                        LabeledContent("Widget sharing", value: model.isSharedContainer ? "Enabled" : "Unavailable")
+                    }
                 }
 
                 Section {
-                    Button("Refresh now") { Task { await model.refresh() } }
+                    Button(model.isRefreshing ? "Refreshing…" : "Refresh now") { Task { await model.refresh() } }
+                        .disabled(model.isRefreshing)
                     Button("Preview widgets") { showsWidgetPreview = true }
                     Button("Unpair", role: .destructive) { confirmUnpair = true }
                         .disabled(!model.isPaired)
                 }
 
                 Section {
-                    Text("Quota sends nothing anywhere except the host you paired with. No analytics, no third-party SDK, and the token is never written to a log.")
+                    Text("Your limits go only to your connected collector and paired Apple Watch. No analytics, advertising or tracking.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 } header: {
@@ -64,6 +66,7 @@ struct SettingsView: View {
             }
             .scrollContentBackground(.hidden)
             .background(Palette.of(scheme).background.ignoresSafeArea())
+            .tint(QuotaTheme.ok)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

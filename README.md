@@ -30,10 +30,10 @@ Cloudflare Worker + KV  (worker/)
   ├─ PUT  /v1/settings    → TRMNL webhook URL, alert thresholds, display mode
   └─ cron */5 → push merge_variables to TRMNL webhook (trmnl/)
         ▲
-Android app + Glance widget (android/) · iOS app + WidgetKit + Watch (ios/, phase 2)
+Android app + Glance widget (android/) · iOS app + WidgetKit + Watch (ios/)
 ```
 
-Tokens never leave the Mac. The backend only ever sees percentages and reset times.
+Provider credentials are used only to authenticate with their provider; they never reach the relay. The backend receives usage percentages, reset times, plan labels, freshness metadata and a random pairing identifier.
 
 ## API contract (v1) — all clients depend on this, change it in one PR with every client
 
@@ -114,3 +114,9 @@ collector generates on first run and prints as a pairing URL `https://<host>/#t=
 | `android/` | Compose app + Glance widget, package `com.gorisse.thomas.quota` |
 | `trmnl/` | Liquid template for the TRMNL plugin |
 | `docs/` | Design tokens, decisions |
+
+## Current delivery
+
+Public setup and collector download: https://quota.sceneview.dev/setup.html
+
+See [the complete platform handoff](docs/RELEASE-2026-09-11.md) for all original target devices and verified release state.

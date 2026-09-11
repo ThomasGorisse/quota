@@ -49,6 +49,8 @@ struct StatusResponse: Codable, Equatable, Sendable {
 struct ProviderStatus: Codable, Equatable, Sendable {
     var plan: String?
     var windows: [Window]
+    var stale: Bool = false
+    var measuredAt: String?
 
     init(plan: String?, windows: [Window]) {
         self.plan = plan
@@ -59,9 +61,14 @@ struct ProviderStatus: Codable, Equatable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         plan = try c.decodeIfPresent(String.self, forKey: .plan)
         windows = try c.decodeIfPresent([Window].self, forKey: .windows) ?? []
+        stale = try c.decodeIfPresent(Bool.self, forKey: .stale) ?? false
+        measuredAt = try c.decodeIfPresent(String.self, forKey: .measuredAt)
     }
 
-    enum CodingKeys: String, CodingKey { case plan, windows }
+    enum CodingKeys: String, CodingKey {
+        case plan, windows, stale
+        case measuredAt = "measured_at"
+    }
 
     /// Highest used percentage first. Stable ties retain the backend's declared order.
     func primaryWindows(limit: Int = 2) -> [Window] {
@@ -78,7 +85,7 @@ struct Window: Codable, Equatable, Identifiable, Sendable {
     var id: String
     var label: String
     /// Percentage **used**, as sent by the collector.
-    var percent: Int
+    var percent: Double
     var resetsAt: String?
 
     var displayLabel: String { label.isEmpty ? id : label }
@@ -89,14 +96,14 @@ struct Window: Codable, Equatable, Identifiable, Sendable {
     }
 
     /// What is left, which is the number worth reading.
-    var remaining: Int { min(max(100 - percent, 0), 100) }
+    var remaining: Int { percent.isFinite ? 100 - Int(min(max(percent, 0), 100).rounded()) : 0 }
 
     var severity: Severity { Severity.ofUsedPercent(percent) }
 
     /// The number to print, and the arc to draw, in the mode the backend is set to.
     /// Thresholds still run on the used percent, so the colour never moves with the mode.
     func value(_ mode: DisplayMode) -> Int {
-        mode == .used ? min(max(percent, 0), 100) : remaining
+        mode == .used ? 100 - remaining : remaining
     }
 
     /// Time until this window resets, or nil when the payload carries no reset date.
@@ -112,7 +119,7 @@ enum Severity: String, Sendable, CaseIterable {
     var wire: String { rawValue }
 
     /// README rule: `<60` ok, `60–85` warn, `>85` critical — on the percentage used.
-    static func ofUsedPercent(_ percent: Int) -> Severity {
+    static func ofUsedPercent(_ percent: Double) -> Severity {
         if percent > 85 { return .critical }
         if percent >= 60 { return .warn }
         return .ok
@@ -181,6 +188,12 @@ struct Snapshot: Codable, Equatable, Sendable {
 
     func isStale(now: Date = Date()) -> Bool {
         status.stale || age(now: now) > Snapshot.staleAfter
+    }
+
+    func isStale(provider: String, now: Date = Date()) -> Bool {
+        let value = status.providers[provider.lowercased()]
+        let measurementExpired = value?.measuredAt.flatMap(ISO8601.parse).map { now.timeIntervalSince($0) > Self.staleAfter } ?? false
+        return isStale(now: now) || value?.stale == true || measurementExpired
     }
 
     /// The mode the whole product is in, as the backend last reported it.

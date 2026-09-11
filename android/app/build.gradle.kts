@@ -32,7 +32,7 @@ android {
         minSdk = 26
         targetSdk = 36
         // Play refuses a versionCode it has already seen; CI passes -PVERSION_CODE=<n>.
-        versionCode = (project.findProperty("VERSION_CODE") as String?)?.toInt() ?: 3
+        versionCode = (project.findProperty("VERSION_CODE") as String?)?.toInt() ?: 4
         // Overridable so a tag build can stamp its own name; 1.0.0 is the real default.
         versionName = (project.findProperty("VERSION_NAME") as String?) ?: "1.0.0"
     }
@@ -80,6 +80,7 @@ android {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)

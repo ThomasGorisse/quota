@@ -39,7 +39,7 @@ fun Severity.glanceLabel(): String = when (this) {
 }
 
 /** Kotlin's stable sort retains payload order on ties. Never prefer a window id. */
-fun Provider.glanceWindows(): List<Window> = windows.filter { it.percent in 0..100 }.sortedByDescending { it.percent }
+fun Provider.glanceWindows(): List<Window> = windows.filter { it.percent.isFinite() && it.percent in 0.0..100.0 }.sortedByDescending { it.percent }
 
 fun Snapshot.glanceHero(): Pair<String, Window>? = orderedProviders()
     .mapNotNull { (name, provider) -> provider.glanceWindows().firstOrNull()?.let { name to it } }

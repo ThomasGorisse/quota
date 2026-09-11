@@ -23,6 +23,7 @@ struct RingGauge: View {
     var animates: Bool = true
 
     @Environment(\.palette) private var palette
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var color: Color { QuotaTheme.color(for: severity) }
     private var fraction: Double { Double(min(max(value, 0), 100)) / 100 }
@@ -37,7 +38,7 @@ struct RingGauge: View {
                 .stroke(color, style: StrokeStyle(lineWidth: stroke, lineCap: .round))
                 // Start at twelve o'clock and fill clockwise.
                 .rotationEffect(.degrees(-90))
-                .animation(animates ? QuotaTheme.ringAnimation : nil, value: fraction)
+                .animation(animates && !reduceMotion ? QuotaTheme.ringAnimation : nil, value: fraction)
 
             centre
                 // Keeps the number inside the ring at every Dynamic Type size.

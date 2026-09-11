@@ -55,7 +55,7 @@ enum QuotaTheme {
     }
 
     // Radius and spacing: 8-grid, 20 on cards, 12 on chips.
-    static let cardRadius: CGFloat = 20
+    static let cardRadius: CGFloat = 28
     static let chipRadius: CGFloat = 12
     /// Stroke widths from DESIGN.md.
     static let ringStrokePhone: CGFloat = 12
@@ -78,19 +78,19 @@ struct Palette {
     let ringTrack: Color
 
     static let dark = Palette(
-        background: Color(hex: 0x0B0F14),
-        surface: Color(hex: 0x141A22),
+        background: Color(hex: 0x101714),
+        surface: Color(hex: 0x1A2420),
         textPrimary: Color(hex: 0xF3F4F6),
         textSecondary: Color(hex: 0x9AA4B2),
-        ringTrack: Color(hex: 0x2A3240)
+        ringTrack: Color(hex: 0x303D35)
     )
 
     static let light = Palette(
-        background: Color(hex: 0xF6F7F9),
+        background: Color(hex: 0xF5F4EF),
         surface: Color(hex: 0xFFFFFF),
-        textPrimary: Color(hex: 0x111827),
-        textSecondary: Color(hex: 0x6B7280),
-        ringTrack: Color(hex: 0xD8DDE5)
+        textPrimary: Color(hex: 0x18251D),
+        textSecondary: Color(hex: 0x647069),
+        ringTrack: Color(hex: 0xDFE5DE)
     )
 
     static func of(_ scheme: ColorScheme) -> Palette {

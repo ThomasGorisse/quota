@@ -13,7 +13,7 @@ safe here because both sources carry the same value: falling through never chang
 {%- assign ids = 'claude,codex,gemini' | split: ',' -%}
 {%- assign word = display_word | default: data.display_word | default: 'left' -%}
 {%- assign updated_at = updated | default: data.updated | default: '--:--' -%}
-<div class="view view--full" style="background: white; color: black;">
+<div class="view view--full" style="background: white; color: black; font-family: Arial, Helvetica, sans-serif;">
   <div class="layout" style="padding: 16px;">
     {% if version == 2 %}
     <div style="display: flex; width: 100%; align-items: flex-start; gap: 16px;">

@@ -30,7 +30,7 @@ struct QuotaSmallView: View {
         VStack(spacing: 4) {
             if let hero = snapshot.mostCritical() {
                 RingGauge(value: hero.window.value(snapshot.display),
-                          severity: snapshot.isStale(now: now) ? .stale : hero.window.severity,
+                          severity: snapshot.isStale(provider: hero.provider, now: now) ? .stale : hero.window.severity,
                           mode: snapshot.display, diameter: 72, stroke: 6, valueScale: 0.30,
                           animates: false)
                 HStack(spacing: 4) {
@@ -39,7 +39,7 @@ struct QuotaSmallView: View {
                         .font(.system(size: 12, weight: .semibold))
                         .lineLimit(1).minimumScaleFactor(0.7)
                 }
-                Text(snapshot.isStale(now: now) ? "Out of date" :
+                Text(snapshot.isStale(provider: hero.provider, now: now) ? "Out of date" :
                      (QuotaFormat.resetLine(hero.window, now: now) ?? "Reset time unknown"))
                     .font(.system(size: 10)).monospacedDigit()
                     .foregroundStyle(palette.textSecondary)
@@ -67,7 +67,7 @@ struct QuotaMediumView: View {
                 HStack(spacing: 16) {
                     VStack(spacing: 4) {
                         RingGauge(value: hero.window.value(snapshot.display),
-                                  severity: snapshot.isStale(now: now) ? .stale : hero.window.severity,
+                                  severity: snapshot.isStale(provider: hero.provider, now: now) ? .stale : hero.window.severity,
                                   mode: snapshot.display, diameter: 80, stroke: 6, valueScale: 0.30,
                                   animates: false)
                         HStack(spacing: 4) {
@@ -113,7 +113,7 @@ struct QuotaCircularView: View {
 
     var body: some View {
         let hero = snapshot.mostCritical()
-        let stale = snapshot.isStale(now: now)
+        let stale = hero.map { snapshot.isStale(provider: $0.provider, now: now) } ?? snapshot.isStale(now: now)
         ZStack {
             AccessoryWidgetBackground()
             if let hero {
@@ -152,7 +152,7 @@ struct QuotaRectangularView: View {
                     .font(.system(size: 22, weight: .semibold)).monospacedDigit()
                 Text("\(hero.provider) · \(hero.window.displayLabel)")
                     .font(.system(size: 12, weight: .semibold))
-                Text(snapshot.isStale(now: now) ? "Out of date" :
+                Text(snapshot.isStale(provider: hero.provider, now: now) ? "Out of date" :
                      (QuotaFormat.resetLine(hero.window, now: now) ?? "Reset time unknown"))
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             } else { Text("Quota · No data") }
@@ -174,10 +174,10 @@ struct QuotaCornerView: View {
             .widgetLabel {
                 if let hero {
                     Gauge(value: Double(hero.window.value(snapshot.display)), in: 0...100) {
-                        Text(snapshot.isStale(now: now) ? "Out of date" :
+                        Text(snapshot.isStale(provider: hero.provider, now: now) ? "Out of date" :
                              "\(hero.provider) · \(hero.window.displayLabel) · \(snapshot.display.caption)")
                     }
-                    .tint(QuotaTheme.color(for: snapshot.isStale(now: now) ? .stale : hero.window.severity))
+                    .tint(QuotaTheme.color(for: snapshot.isStale(provider: hero.provider, now: now) ? .stale : hero.window.severity))
                 } else { Text("No data") }
             }
     }

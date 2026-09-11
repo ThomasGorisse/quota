@@ -10,12 +10,12 @@ import com.gorisse.thomas.quota.data.Severity
  * Dynamic colour is deliberately off: severity has to mean the same thing on every device.
  */
 object QuotaColors {
-    val BackgroundDark = Color(0xFF0B0F14)
-    val BackgroundLight = Color(0xFFF6F7F9)
-    val SurfaceDark = Color(0xFF141A22)
+    val BackgroundDark = Color(0xFF101713)
+    val BackgroundLight = Color(0xFFF7F7F2)
+    val SurfaceDark = Color(0xFF1A231E)
     val SurfaceLight = Color(0xFFFFFFFF)
     val TextPrimaryDark = Color(0xFFF3F4F6)
-    val TextPrimaryLight = Color(0xFF111827)
+    val TextPrimaryLight = Color(0xFF18221C)
     val TextSecondaryDark = Color(0xFF9AA4B2)
     val TextSecondaryLight = Color(0xFF6B7280)
 

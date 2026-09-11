@@ -28,6 +28,8 @@ targetTemplates:
   QuotaTarget:
     sources:
       - path: Sources/Shared
+      - path: Resources/Shared/PrivacyInfo.xcprivacy
+        buildPhase: resources
       - path: Resources/Shared/Brand.xcassets
         buildPhase: resources
 
@@ -47,9 +49,15 @@ targets:
         PRODUCT_NAME: Quota
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_ENTITLEMENTS: Support/Quota.entitlements
+      configs:
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: Quota App Store
     info:
       path: Support/Quota-Info.plist
       properties:
+        QuotaKeychainAccessGroup: "$(AppIdentifierPrefix)group.com.gorisse.thomas.quota"
         CFBundleDisplayName: Quota
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -60,6 +68,11 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         UIBackgroundModes: [fetch]
@@ -86,9 +99,15 @@ targets:
         PRODUCT_NAME: QuotaWidgets
         CODE_SIGN_ENTITLEMENTS: Support/QuotaWidgets.entitlements
         SKIP_INSTALL: YES
+      configs:
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: Quota Widgets App Store
     info:
       path: Support/QuotaWidgets-Info.plist
       properties:
+        QuotaKeychainAccessGroup: "$(AppIdentifierPrefix)group.com.gorisse.thomas.quota"
         CFBundleDisplayName: Quota
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -113,9 +132,15 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_ENTITLEMENTS: Support/QuotaWatch.entitlements
         SKIP_INSTALL: YES
+      configs:
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: Quota Watch App Store
     info:
       path: Support/QuotaWatch-Info.plist
       properties:
+        QuotaKeychainAccessGroup: "$(AppIdentifierPrefix)group.com.gorisse.thomas.quota"
         CFBundleDisplayName: Quota
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -138,9 +163,15 @@ targets:
         PRODUCT_NAME: QuotaWatchWidgets
         CODE_SIGN_ENTITLEMENTS: Support/QuotaWatchWidgets.entitlements
         SKIP_INSTALL: YES
+      configs:
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: Quota Watch Widgets App Store
     info:
       path: Support/QuotaWatchWidgets-Info.plist
       properties:
+        QuotaKeychainAccessGroup: "$(AppIdentifierPrefix)group.com.gorisse.thomas.quota"
         CFBundleDisplayName: Quota
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)

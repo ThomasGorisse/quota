@@ -1,42 +1,25 @@
-Quota shows how much of your Claude and Codex usage limits is left, as a ring on your home
-screen, your lock screen and your watch. One glance, no app to open.
+Know your AI capacity before you start.
 
-You run the collector on your own Mac. It reads the usage figures Claude Code and the Codex
-CLI already write locally, works out a percentage, and sends that percentage to a small relay.
-This app pairs with the relay once, by scanning a QR code, and reads your figures back with
-that pairing token. Only percentages and reset times travel: no prompts, no file contents, no
-token counts, no account identifiers.
+Quota brings Claude, Codex and Gemini usage limits together in a calm, clear dashboard. One ring per provider highlights the limit closest to empty, with the window name and reset time beside it. Other limits stay one tap or glance away.
 
-WHAT YOU SEE
+YOUR CAPACITY, CLEARLY
+• Switch between capacity left and usage spent. Your preference syncs across your connected screens.
+• See session, weekly, reserve and model limits when your provider reports them.
+• Read reset times in plain words.
+• Recognize old readings: values turn grey when they are out of date, even if another provider has refreshed.
+• Try sample data before setting anything up. No sign-in is needed to explore.
 
-• A ring per usage window: the rolling 5-hour one, the weekly one, and the reserve when your
-  plan has one.
-• Green under 60 % used, amber to 85 %, red above — the same three colours on every screen.
-• How long until each window resets, counting down.
-• How old the reading is, and a plain STALE marker when the collector has stopped reporting.
+ON YOUR APPLE DEVICES
+Home screen and lock screen widgets show your most constrained limit. Apple Watch and its complications keep the same reading close at hand. Pair on your iPhone to connect your watch.
 
-WIDGETS
+CONNECT YOUR MAC
+For live readings, install the free Quota collector on the Mac where you use Claude Code, Codex or Gemini CLI. It uses your existing provider sign-in to request usage limits from that provider. Pair the app by pasting the pairing link from your Mac. Keep the Mac online for updated readings; background widget refresh is scheduled by the operating system.
 
-• Home screen, medium: the two windows that matter for each provider, big enough to read at
-  arm's length.
-• Home screen, small: one ring per provider.
-• Lock screen: a circular gauge for whichever window is closest to empty, and a two-line
-  rectangular summary.
-• Apple Watch: the full set of rings, plus complications in every shape.
+Setup and collector download: https://quota.sceneview.dev/setup.html
 
-LEFT OR USED
+PRIVACY BY DESIGN
+No ads, analytics or tracking. Your provider credentials stay on your Mac and are used only to authenticate with the respective provider. The relay receives usage percentages, reset times, plan labels and a random pairing identifier, never prompts, source code or provider credentials. You can use the hosted relay or configure your own.
 
-One switch turns every ring around: show the capacity left, or the capacity spent. The setting
-lives on the backend, so the phone, the widgets, the watch and the web dashboard all follow at
-once. The colours never move — a window that is red stays red in both readings.
+Disconnecting removes the pairing from this device. Hosted snapshots expire seven days after the last collection; history expires after 24 hours. To stop collection, uninstall the Mac collector using the setup instructions.
 
-PRIVACY
-
-No account. No analytics. No crash reporter. No third-party SDK. No tracking. The app talks to
-exactly one host: the one in the pairing URL you gave it. The camera is used only to read that
-pairing QR code, and no image is stored.
-
-WHAT YOU NEED
-
-A Mac where you use Claude Code or the Codex CLI, and the free open-source collector from
-github.com/ThomasGorisse/quota. Without it this app has nothing to show.
+Quota is free and has no in-app purchases. It is an independent tool, not affiliated with Anthropic, OpenAI or Google. Provider availability depends on your account and the data each provider exposes.

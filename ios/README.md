@@ -14,7 +14,7 @@ on the e-ink screen.
 |---|---|
 | `Quota` | The phone app: pairing, one card per reporting provider, Settings, `BGAppRefreshTask` |
 | `QuotaWidgets` | Home screen small + medium, lock screen circular + rectangular |
-| `QuotaWatch` | watchOS app, every window as a ring in a scrollable view |
+| `QuotaWatch` | watchOS app, one overall limiting window with its reset and state |
 | `QuotaWatchWidgets` | Complications: circular, corner, rectangular, inline |
 
 `Quota.xcodeproj` is **generated** — edit [`project.yml`](project.yml) and re-run `xcodegen`,
@@ -84,10 +84,13 @@ the watch, the web dashboard and the TRMNL screen all switch together.
 The device token is a credential: it is never logged, never put in a URL this app builds, and
 never sent anywhere but the paired host.
 
-It is written to the keychain under the App Group access group so that the widget and the watch
-read the same item. That access group only resolves once the bundle is signed with a real team
+It is written to the keychain under the team-prefixed access group so that each app and its
+local widget extension read the same item. The iPhone transfers pairing, display mode and the
+last snapshot to its paired Apple Watch through WatchConnectivity. App Groups alone do not
+synchronize separate devices. Unpairing also clears the watch when the latest context arrives. That access group only resolves once the bundle is signed with a real team
 id — on an unsigned simulator build the keychain call comes back `errSecMissingEntitlement`, and
-`TokenStore` falls back to the App Group `UserDefaults`. Settings prints which of the two is in
+Debug `TokenStore` may fall back to the App Group `UserDefaults`. Release builds refuse
+pairing if secure storage fails; they never write a new token to preferences. Settings prints which of the two is in
 use under **Storage**, because "it is in the keychain" must not be a guess. The screenshots
 below were taken from an unsigned build, so they say so.
 
@@ -125,6 +128,5 @@ The watch: ![watch](docs/screenshots/watch-dark.png)
 
 Everything the submission still needs, in order and with nothing left implicit:
 [`docs/app-store.md`](docs/app-store.md). The team id is set, the icon is real, and the
-listing copy and the 6.9-inch captures live in [`store/`](store). What is left is portal work
-(App IDs, App Group, Keychain Sharing), the App Store Connect record, and one pass on a
-physical device.
+listing copy and the 6.9-inch captures live in [`store/`](store). App IDs, the App Group, App Store Connect record and four distribution profiles now exist.
+Physical-device background refresh and iPhone-to-Watch delivery still need a real-device pass.

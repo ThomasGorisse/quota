@@ -109,7 +109,7 @@ private fun SmallContent(snapshot: Snapshot, mode: DisplayMode, demo: Boolean = 
         return
     }
     val (name, window) = hero
-    val stale = snapshot.isStale()
+    val stale = snapshot.isStale() || snapshot.orderedProviders().firstOrNull { it.first == hero?.first }?.second?.isStaleAt() == true
     val size = LocalSize.current
     val diameter = minOf(size.height.value - 8, size.width.value * .36f).toInt().coerceIn(24, 64)
     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
@@ -133,8 +133,8 @@ private fun SmallContent(snapshot: Snapshot, mode: DisplayMode, demo: Boolean = 
                         fontWeight = FontWeight.Medium), maxLines = 1)
             }
             val reset = if (stale) "Out of date" else formatResetsIn(window.resetsIn())
-            Text(if (demo) "Sample data · $reset" else reset,
-                style = TextStyle(color = secondaryText(), fontSize = 10.sp), maxLines = 2)
+            if (demo) Text("Sample data", style = TextStyle(color = secondaryText(), fontSize = 10.sp), maxLines = 1)
+            Text(reset, style = TextStyle(color = secondaryText(), fontSize = 10.sp), maxLines = 2)
         }
     }
 }
@@ -143,7 +143,7 @@ private fun SmallContent(snapshot: Snapshot, mode: DisplayMode, demo: Boolean = 
 @Composable
 private fun LargeContent(snapshot: Snapshot, mode: DisplayMode, demo: Boolean = false) {
     val hero = snapshot.glanceHero()
-    val stale = snapshot.isStale()
+    val stale = snapshot.isStale() || snapshot.orderedProviders().firstOrNull { it.first == hero?.first }?.second?.isStaleAt() == true
     if (hero == null) {
         Text("Quota · No data", style = TextStyle(color = secondaryText(), fontSize = 14.sp))
         return
@@ -181,9 +181,9 @@ private fun LargeContent(snapshot: Snapshot, mode: DisplayMode, demo: Boolean = 
                 snapshot.orderedProviders().filter { it.first != name }.forEach { (providerName, provider) ->
                     provider.glanceWindows().firstOrNull()?.let { limit ->
                         Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
-                            ProviderMark(ProviderId.of(providerName.lowercase()), stale = stale)
+                            ProviderMark(ProviderId.of(providerName.lowercase()), stale = snapshot.isStale() || provider.isStaleAt())
                             Spacer(GlanceModifier.size(4.dp))
-                            Text("$providerName · ${limit.label.ifEmpty { limit.id }} ${limit.shown(mode)}% ${if (mode.isUsed) "used" else "left"}",
+                            Text("$providerName · ${limit.label.ifEmpty { limit.id }} ${limit.shown(mode)}% ${if (mode.isUsed) "used" else "left"}${if (snapshot.isStale() || provider.isStaleAt()) " · Out of date" else ""}",
                                 style = TextStyle(color = primaryText(), fontSize = 11.sp), maxLines = 2)
                         }
                         Spacer(GlanceModifier.size(4.dp))

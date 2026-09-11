@@ -24,7 +24,7 @@ struct WatchHomeView: View {
         VStack(spacing: 4) {
             if let snapshot, let hero = snapshot.mostCritical() {
                 RingGauge(value: hero.window.value(snapshot.display),
-                          severity: snapshot.isStale(now: now) ? .stale : hero.window.severity,
+                          severity: snapshot.isStale(provider: hero.provider, now: now) ? .stale : hero.window.severity,
                           mode: snapshot.display, diameter: 104, stroke: 8, valueScale: 0.30)
                 HStack(spacing: 4) {
                     BrandGlyph(providerName: hero.provider, size: 12)
@@ -38,9 +38,9 @@ struct WatchHomeView: View {
                     .lineLimit(1).minimumScaleFactor(0.7)
                 // The state is the alarm: it carries its own colour here, like the chip
                 // the phone, the web and the board all draw.
-                Text(snapshot.isStale(now: now) ? "Out of date · \(QuotaFormat.agoShort(snapshot.age(now: now)))" : hero.window.severity.label)
+                Text(snapshot.isStale(provider: hero.provider, now: now) ? "Out of date · \(QuotaFormat.agoShort(snapshot.age(now: now)))" : hero.window.severity.label)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(QuotaTheme.color(for: snapshot.isStale(now: now) ? .stale : hero.window.severity))
+                    .foregroundStyle(QuotaTheme.color(for: snapshot.isStale(provider: hero.provider, now: now) ? .stale : hero.window.severity))
                     .lineLimit(1).minimumScaleFactor(0.7)
             } else {
                 Text(snapshot == nil ? "Not paired" : "No data")
@@ -63,7 +63,12 @@ struct WatchHomeView: View {
             if phase == .active { Task { await refresh() } }
         }
         .refreshable { await refresh() }
-        .task { await refresh() }
+        .onReceive(NotificationCenter.default.publisher(for: WatchSync.didUpdate)) { _ in
+            snapshot = SharedStore.shared.snapshot
+            now = Date()
+            Task { await refresh() }
+        }
+        .task { WatchSync.shared.start(); await refresh() }
     }
 
     /// The debug launch arguments work here too, so the watch screen can be captured from the

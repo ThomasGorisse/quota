@@ -1,2 +1,1 @@
-Two rings on your home screen: how much of your Claude and Codex limits is left, and when
-each window resets. Nothing to open, nothing tracked.
+Claude, Codex and Gemini capacity, together. Clear limits, reset times and widgets for your home screen, lock screen and Apple Watch.

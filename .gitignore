@@ -1,2 +1,4 @@
 .claude/worktrees/
 collector/__pycache__/
+android/.kotlin/
+.wrangler/

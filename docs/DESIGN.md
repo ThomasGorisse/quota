@@ -20,9 +20,9 @@ provider, number of windows, or available capacity.
 - `stale` from the server wins; the existing client freshness limit is 600 seconds. A stale
   reading stays visible in grey and is labelled **Out of date**. Do not extend this limit
   just to keep an old Watch reading coloured.
-- The current contract cannot distinguish an omitted failed provider from a removed provider.
-  Do not silently resurrect omitted providers from local history. See the unresolved ingestion
-  requirement in [the redesign handoff](ux/astra-2026-09-10.md).
+- The collector retains failed providers for up to 24 hours with their original measurement time.
+  `provider.measured_at` and `provider.stale` distinguish their freshness from the snapshot.
+  Recompute age locally while offline. Omitted providers stay omitted; do not resurrect removed providers.
 
 ## Hierarchy
 
@@ -93,3 +93,9 @@ These shapes carry the distinction without hue.
 value, label, plan, reset, state and detail. This private presentation adapter does not change
 `GET /v1/status`. The Liquid template refuses legacy variables instead of guessing missing
 values. Update the template and Worker together; no deployment was performed in this pass.
+
+## 11 September visual update
+
+Phone surfaces use a warm ivory light background and deep green-black dark background, generous
+card spacing and quiet provider identity. Severity colors retain the same meaning. Web desk mode
+offers opt-in Wake Lock and fullscreen; no background motion or decorative 3D is required.
