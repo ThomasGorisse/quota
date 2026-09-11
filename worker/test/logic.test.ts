@@ -322,3 +322,22 @@ describe('validation', () => {
     expect(normalizeSettings({}, s).trmnl_webhook_url).toBe(s.trmnl_webhook_url);
   });
 });
+
+
+describe('truthful cached readings', () => {
+  it('ages providers independently and does not invent history samples', () => {
+    const snap = snapshot();
+    snap.providers.claude.extra = { measured_at: '2026-09-09T17:40:00Z', error: 'HTTP 429' };
+    const status = buildStatus(snap, appendHistory([], snap, NOW), DEFAULT_SETTINGS, NOW);
+    expect(status.stale).toBe(false);
+    expect(status.providers.claude.stale).toBe(true);
+    expect(status.providers.codex.stale).toBe(false);
+    expect(status.history[0]['claude.session']).toBeUndefined();
+    expect(buildMergeVariables(status, NOW).claude_state).toBe('stale');
+  });
+  it('never converts malformed percentages into available capacity', () => {
+    const snap = snapshot();
+    snap.providers.claude.windows = [undefined, null, {}, { percent: '80' }, { percent: -1 }, { percent: 101 }] as never;
+    expect(validateSnapshot(snap)?.providers.claude.windows).toEqual([]);
+  });
+});

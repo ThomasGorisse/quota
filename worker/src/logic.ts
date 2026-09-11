@@ -77,6 +77,8 @@ export function isStale(age: number): boolean {
 export function historyPoint(snapshot: Snapshot): HistoryPoint {
   const point: HistoryPoint = { t: snapshot.collected_at };
   for (const [name, provider] of Object.entries(snapshot.providers ?? {})) {
+    // Cached values retain their original sample instead of inventing new observations.
+    if (provider.extra?.measured_at) continue;
     for (const w of provider.windows ?? []) {
       if (typeof w.percent === 'number') point[`${name}.${w.id}`] = w.percent;
     }
@@ -154,7 +156,12 @@ export function buildStatus(
     collected_at: snapshot.collected_at,
     age_seconds: age,
     stale: isStale(age),
-    providers: snapshot.providers ?? {},
+    providers: Object.fromEntries(Object.entries(snapshot.providers ?? {}).map(([id, provider]) => {
+      const measured = typeof provider.extra?.measured_at === 'string'
+        ? provider.extra.measured_at : snapshot.collected_at;
+      return [id, { ...provider, measured_at: measured,
+        stale: isStale(ageSeconds(measured, now)) || isStale(age) }];
+    })),
     severity: worstSeverity(snapshot, settings),
     display: settings.display ?? DEFAULT_SETTINGS.display,
     history: downsample(history ?? []),
@@ -206,8 +213,8 @@ export function buildMergeVariables(
     vars[`${id}_value`] = shown(hero.percent);
     vars[`${id}_label`] = hero.label || hero.id;
     vars[`${id}_reset`] = reset(hero.resets_at);
-    vars[`${id}_state`] = status.stale ? 'stale' : state(hero.percent);
-    vars[`${id}_state_label`] = status.stale ? 'Out of date' : wording[state(hero.percent)];
+    vars[`${id}_state`] = (status.stale || provider.stale) ? 'stale' : state(hero.percent);
+    vars[`${id}_state_label`] = (status.stale || provider.stale) ? 'Out of date' : wording[state(hero.percent)];
     // Text is deliberately secondary. Reserve has no bespoke treatment. Three secondary
     // windows is one line on the board, and keeps the payload inside TRMNL's 2 KB.
     vars[`${id}_detail`] = windows.slice(1, 4).map(w => `${w.label || w.id} ${shown(w.percent)}% ${word}`).join(' · ');
@@ -221,10 +228,11 @@ function parseWindows(raw: unknown): Window[] {
   for (const item of raw) {
     if (!item || typeof item !== 'object') continue;
     const w = item as Record<string, unknown>;
+    if (typeof w.percent !== 'number' || !Number.isFinite(w.percent) || w.percent < 0 || w.percent > 100) continue;
     out.push({
       id: String(w.id ?? ''),
       label: String(w.label ?? ''),
-      percent: typeof w.percent === 'number' ? w.percent : 0,
+      percent: w.percent,
       resets_at: typeof w.resets_at === 'string' ? w.resets_at : null,
     });
   }
@@ -240,7 +248,7 @@ export function validateSnapshot(body: unknown): Snapshot | null {
       ? b.collected_at
       : null;
   if (!collected) return null;
-  if (!b.providers || typeof b.providers !== 'object') return null;
+  if (!b.providers || typeof b.providers !== 'object' || Array.isArray(b.providers)) return null;
   const providers: Record<string, Provider> = {};
   for (const [name, raw] of Object.entries(b.providers as Record<string, unknown>)) {
     if (!raw || typeof raw !== 'object') continue;

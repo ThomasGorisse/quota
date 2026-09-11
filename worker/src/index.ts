@@ -69,8 +69,8 @@ async function handle(request: Request, env: Env): Promise<Response> {
     const history = (await env.QUOTA.get<HistoryPoint[]>(histKey(token), 'json')) ?? [];
     const next = appendHistory(history, snapshot, Date.now());
     await Promise.all([
-      env.QUOTA.put(snapKey(token), JSON.stringify(snapshot)),
-      env.QUOTA.put(histKey(token), JSON.stringify(next)),
+      env.QUOTA.put(snapKey(token), JSON.stringify(snapshot), { expirationTtl: 7 * 86400 }),
+      env.QUOTA.put(histKey(token), JSON.stringify(next), { expirationTtl: 86400 }),
     ]);
     return json({ ok: true, samples: next.length });
   }

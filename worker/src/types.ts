@@ -11,6 +11,8 @@ export interface Provider {
   plan: string | null;
   windows: Window[];
   extra?: Record<string, unknown>;
+  measured_at?: string;
+  stale?: boolean;
 }
 
 export interface Snapshot {

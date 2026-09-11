@@ -223,7 +223,7 @@ class CachedProviders(unittest.TestCase):
         self.assertGreaterEqual(claude["extra"]["age_seconds"], 5 * 60)
 
     def test_a_reading_older_than_the_ceiling_is_not_served(self):
-        claude = self.snapshot(self.fresh_cache(minutes_ago=90))["providers"]["claude"]
+        claude = self.snapshot(self.fresh_cache(minutes_ago=25 * 60))["providers"]["claude"]
         self.assertEqual(claude["windows"], [])
         self.assertEqual(claude["extra"], {"error": "HTTP 429"})
 
@@ -245,6 +245,21 @@ class CachedProviders(unittest.TestCase):
         self.assertEqual(qc.read_cache(path), {})
         qc.write_cache({"claude": {"windows": []}}, path)
         self.assertEqual(qc.read_cache(path), {"claude": {"windows": []}})
+
+
+class ProviderReadings(unittest.TestCase):
+    def test_claude_missing_window_is_not_full_capacity(self):
+        with mock.patch.object(qc, "claude_credentials", return_value=("test", "Max")), \
+             mock.patch.object(qc, "get_json", return_value={"seven_day": {"utilization": 85.1}}):
+            windows = qc.collect_claude()["windows"]
+        self.assertEqual(len(windows), 1)
+        self.assertEqual(windows[0]["id"], "weekly")
+        self.assertEqual(windows[0]["percent"], 85.1)
+
+    def test_malformed_claude_readings_are_not_zero(self):
+        with mock.patch.object(qc, "claude_credentials", return_value=("test", "Max")), \
+             mock.patch.object(qc, "get_json", return_value={"five_hour": {}, "seven_day": {"utilization": True}}):
+            self.assertEqual(qc.collect_claude()["windows"], [])
 
 
 if __name__ == "__main__":

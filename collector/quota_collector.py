@@ -32,17 +32,10 @@ CONFIG_PATH = CONFIG_DIR / "config.json"
 PAIRING_PATH = CONFIG_DIR / "pairing.txt"
 CACHE_PATH = CONFIG_DIR / "last-good.json"
 
-# How long a provider may be served from cache after it starts failing. Claude answers
-# HTTP 429 for tens of minutes at a time; below this age the last reading is still a far
-# better answer than no card at all, above it the numbers stop being believable.
-#
-# The payload has one `collected_at` for the whole snapshot, so a cached provider rides on
-# a fresh timestamp: the ceiling is what bounds that lie. Five collector cycles is short
-# enough that a 5-hour window cannot have moved much, and long enough to cover the 429
-# bursts measured on 2026-09-10. `extra.measured_at` and `extra.age_seconds` carry the real
-# age for whoever wants it; per-provider freshness in `GET /v1/status` is the proper fix
-# and needs a contract change across four clients.
-CACHE_MAX_AGE = 15 * 60
+# Keep the last successful reading for a day during temporary provider failures.
+# The Worker exposes its real measured_at and per-provider stale flag; clients grey
+# readings after ten minutes, independently of the other providers' refreshes.
+CACHE_MAX_AGE = 24 * 60 * 60
 
 DEFAULT_WORKER_URL = "https://quota.sceneview.dev"
 
@@ -167,12 +160,17 @@ def collect_claude() -> dict[str, Any]:
         ("session", "5 h", "five_hour"),
         ("weekly", "Week", "seven_day"),
     ):
-        block = data.get(key) or {}
+        block = data.get(key)
+        if not isinstance(block, dict):
+            continue
+        value = block.get("utilization")
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 100:
+            continue
         windows.append(
             {
                 "id": window_id,
                 "label": label,
-                "percent": round(float(block.get("utilization") or 0), 1),
+                "percent": round(float(value), 1),
                 "resets_at": normalize_iso(block.get("resets_at")),
             }
         )
@@ -205,6 +203,9 @@ def collect_codex() -> dict[str, Any]:
     def window(block: Any, window_id: str, label: str) -> dict[str, Any] | None:
         if not isinstance(block, dict):
             return None
+        value = block.get("used_percent")
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 100:
+            return None
         # The plan decides what the primary window is (Plus: 5 h + weekly; Pro right
         # after the upgrade: a single 7-day window), so trust the declared duration
         # over the position.
@@ -219,7 +220,7 @@ def collect_codex() -> dict[str, Any]:
         return {
             "id": window_id,
             "label": label,
-            "percent": round(float(block.get("used_percent") or 0), 1),
+            "percent": round(float(value), 1),
             "resets_at": iso_from_unix(block.get("reset_at")),
         }
 
@@ -501,7 +502,7 @@ def write_cache(cache: dict[str, Any], path: Path = CACHE_PATH) -> None:
 
 
 def from_cache(entry: Any, reason: str, now: datetime) -> dict[str, Any] | None:
-    """The cached provider, re-dated and flagged, or None when it is too old."""
+    """The cached provider with its original measurement time, or None past retention."""
     if not isinstance(entry, dict) or not entry.get("windows"):
         return None
     measured = normalize_iso(entry.get("measured_at"))
