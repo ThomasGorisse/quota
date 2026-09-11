@@ -164,23 +164,36 @@ struct ProviderCard: View {
     var now: Date = Date()
     var availableWidth: CGFloat = 358
     @Environment(\.palette) private var palette
+    @Environment(\.dynamicTypeSize) private var dynamicType
+    @State private var expanded = false
 
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
+        let layout = dynamicType.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 20)) : AnyLayout(HStackLayout(alignment: .center, spacing: 20))
+        layout {
             if let hero = provider.primaryWindows(limit: 1).first {
                 RingGauge(value: hero.value(mode), severity: stale ? .stale : hero.severity,
                           mode: mode, diameter: 112, stroke: 8, valueScale: 0.29)
                 VStack(alignment: .leading, spacing: 8) {
                     identity
+                    Text(stale ? "Out of date" : hero.severity.label)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(QuotaTheme.color(for: stale ? .stale : hero.severity))
                     Text(hero.label.isEmpty ? hero.id : hero.label)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(palette.textPrimary)
                     Text(QuotaFormat.resetLine(hero, now: now) ?? "Reset time unknown")
                         .font(.system(size: 12)).monospacedDigit()
                         .foregroundStyle(palette.textSecondary)
-                    ForEach(provider.primaryWindows(limit: provider.windows.count).dropFirst()) { window in
-                        Text("\(window.label.isEmpty ? window.id : window.label) \(window.value(mode))% \(mode.caption)")
-                            .font(.system(size: 12)).monospacedDigit()
+                    if provider.windows.count > 1 {
+                        if expanded {
+                            ForEach(provider.primaryWindows(limit: provider.windows.count).dropFirst()) { window in
+                                Text("\(window.label.isEmpty ? window.id : window.label) \(window.value(mode))% \(mode.caption)")
+                                    .font(.system(size: 12)).monospacedDigit()
+                                    .foregroundStyle(palette.textSecondary)
+                            }
+                        }
+                        Button(expanded ? "Hide details" : "Details") { expanded.toggle() }
+                            .font(.caption)
                             .foregroundStyle(palette.textSecondary)
                     }
                 }
@@ -192,7 +205,7 @@ struct ProviderCard: View {
                 }
             }
         }
-        .padding(16)
+        .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(palette.surface, in: RoundedRectangle(cornerRadius: QuotaTheme.cardRadius, style: .continuous))
     }
@@ -201,7 +214,7 @@ struct ProviderCard: View {
         HStack(spacing: 8) {
             BrandMark(providerName: name, size: 24, stale: stale)
             VStack(alignment: .leading, spacing: 2) {
-                Text(name).font(.system(size: 20, weight: .semibold)).foregroundStyle(palette.textPrimary)
+                Text(name).font(.title3.weight(.semibold)).foregroundStyle(palette.textPrimary)
                 Text(providerPlanSubtitle(name, plan: provider.plan))
                     .font(.system(size: 12)).foregroundStyle(palette.textSecondary)
             }

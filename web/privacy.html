@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark light">
-  <meta name="theme-color" content="#0B0F14" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111714" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F5F4EF" media="(prefers-color-scheme: light)">
   <meta name="description" content="Privacy policy for Quota — your AI usage at a glance.">
   <meta name="referrer" content="no-referrer">
   <title>Quota — Privacy policy</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%2322C55E' stroke-width='5' stroke-dasharray='52 18' transform='rotate(-90 16 16)'/%3E%3C/svg%3E">
   <style>
-    :root { color-scheme: dark light; --bg:#0B0F14; --fg:#E6EAF0; --muted:#9AA5B1; --line:#1E2630; --accent:#22C55E; }
-    @media (prefers-color-scheme: light) { :root { --bg:#F6F7F9; --fg:#12181F; --muted:#5A6572; --line:#DFE3E8; } }
+    :root { color-scheme: dark light; --bg:#111714; --fg:#F2F3EA; --muted:#A5AFA6; --line:#313D34; --accent:#A9D88B; }
+    @media (prefers-color-scheme: light) { :root { --bg:#F5F4EF; --fg:#12181F; --muted:#5A6572; --line:#DFE3E8; --accent:#467A35; } }
     * { box-sizing: border-box; }
     body { margin:0; background:var(--bg); color:var(--fg);
            font:16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -31,45 +31,45 @@
 <body>
 <main>
   <h1>Quota — Privacy policy</h1>
-  <p class="sub">Last updated 10 September 2026</p>
+  <p class="sub">Last updated 11 September 2026</p>
 
-  <p>Quota shows how much AI usage capacity you have left. It is a private tool: it runs
-  against a backend that you host yourself, and it has no shared account system, no
-  analytics and no advertising.</p>
+  <p>Quota displays the usage limits of the AI providers you connect. The default service
+  uses a Cloudflare relay operated by Thomas Gorisse at quota.sceneview.dev. A separately
+  hosted backend can also be configured. There is no Quota account, advertising or analytics.</p>
 
-  <h2>What the app stores</h2>
-  <p>Quota stores only your own quota numbers — the usage percentages and reset times
-  reported by the AI providers you use — together with a pairing token. Nothing else is
-  collected.</p>
+  <h2>What is processed</h2>
+  <p>The collector sends provider and subscription labels, usage percentages, reset times,
+  collection timestamps and provider status information. A random pairing token identifies
+  your data. Display preferences and an optional TRMNL webhook address are also stored when
+  you configure them. Quota does not collect your name, conversations, prompts or email address.</p>
 
   <h2>Where it is stored</h2>
-  <p>Your quota numbers are sent to, and stored on, <strong>your own Cloudflare Worker</strong>
-  — the backend you deploy and control. The developer of Quota operates no server that
-  receives your data, and has no access to it.</p>
+  <p>With the default configuration, this information is stored in Cloudflare Workers KV
+  for the Quota relay. The service operator has administrative access to this infrastructure.
+  If you configure your own backend, its operator controls that storage instead.</p>
 
-  <h2>The pairing token</h2>
-  <p>The pairing token is a random value generated on your own machine. It identifies a
-  device to your backend so that your screens show your numbers and not someone else's.
-  It is sent only to your own backend. Treat it as a credential and do not share it.</p>
+  <h2>Pairing and provider credentials</h2>
+  <p>The pairing token is generated on your Mac and stored locally on paired screens.
+  Anyone with your pairing link can access your quota data. Do not share it publicly.</p>
+  <p>AI provider credentials stay with the collector on your Mac and are sent only to the
+  corresponding provider to read or refresh usage access. They are never sent to Quota’s
+  relay or to your paired screens.</p>
 
-  <h2>Provider credentials never leave your machine</h2>
-  <p>The credentials used to read your AI provider usage stay on the computer where the
-  collector runs. They are never transmitted to the backend, to the app, or to anyone
-  else. Only percentages and reset times are ever sent.</p>
+  <h2>Retention and removal</h2>
+  <p>The relay keeps up to 24 hours of usage history. Stored quota data expires after seven
+  days without a new collection. Device preferences are retained while the integration is
+  active. Disconnecting or uninstalling a screen removes its local pairing; it does not
+  delete the data on the relay. Stop the collector to stop new uploads. Contact the address
+  below for help with deleting relay data.</p>
+
+  <h2>Optional integrations</h2>
+  <p>If you enable TRMNL, the relay sends formatted quota readings to your TRMNL webhook.
+  TRMNL then processes those readings to render your display under its own privacy policy.</p>
 
   <h2>What Quota does not do</h2>
-  <ul>
-    <li>No data is sold or shared with third parties.</li>
-    <li>No advertising, and no advertising identifiers.</li>
-    <li>No analytics, tracking or profiling.</li>
-    <li>No location, contacts, photos, files or messages are accessed.</li>
-    <li>No accounts are created and no personal profile is built.</li>
-  </ul>
-
-  <h2>Deleting your data</h2>
-  <p>Because the data lives on your own backend, you delete it by clearing your Worker's
-  storage or by taking the Worker down. Uninstalling the app removes the pairing token
-  from the device.</p>
+  <ul><li>No sale of data or advertising identifiers.</li>
+    <li>No analytics, tracking or profiling in the app.</li>
+    <li>No access to your conversations, location, contacts, photos or messages.</li></ul>
 
   <h2>Children</h2>
   <p>Quota is a developer utility and is not directed at children.</p>

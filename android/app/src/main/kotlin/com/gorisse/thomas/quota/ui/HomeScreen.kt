@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -46,11 +47,11 @@ fun HomeScreen(
             dismissButton = { TextButton(onClick = { confirmUnpair = false }) { Text("Cancel") } })
     }
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Header(snapshot?.severity(nowMillis) ?: Severity.STALE,
+        Header(
             snapshot?.let { "Updated " + formatAge(it.ageSeconds(nowMillis)) } ?: "Waiting for first update",
             demo, onUnpair = { confirmUnpair = true }, mode = mode, onModeChange = onModeChange,
             // Nothing to switch between until there is a payload, and the write would fail.
-            showToggle = snapshot != null)
+            showToggle = snapshot != null, onRefresh = onRefresh, refreshing = refreshing)
         PullToRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, modifier = Modifier.weight(1f)) {
             when {
                 snapshot == null && error != null -> ErrorState(error, onRefresh, onUnpair)
@@ -60,7 +61,7 @@ fun HomeScreen(
                 }
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     if (error != null) item {
@@ -69,17 +70,23 @@ fun HomeScreen(
                                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
                         }
                     }
+                    if (snapshot.orderedProviders().isEmpty()) item {
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                            Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("Connected. Waiting for usage.", style = MaterialTheme.typography.titleLarge)
+                                Text("Open Claude, Codex or Gemini on your Mac and keep the Quota collector running. Your first reading will appear here.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                TextButton(onClick = onRefresh) { Text("Check for an update") }
+                            }
+                        }
+                    }
                     items(snapshot.orderedProviders(), key = { it.first }) { (name, provider) ->
-                        ProviderCard(name, provider, stale, now, mode)
+                        ProviderCard(name, provider, stale || provider.isStaleAt(nowMillis), now, mode)
                     }
                     item {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(if (mode.isUsed) "Every number is what’s used." else "Every number is what’s left.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("Pull to refresh", style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        Text("The most-used limit leads each card. Pull down to refresh.",
+                            Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -89,24 +96,28 @@ fun HomeScreen(
 
 @Composable
 private fun Header(
-    severity: Severity, ageLabel: String, demo: Boolean, onUnpair: () -> Unit,
+    ageLabel: String, demo: Boolean, onUnpair: () -> Unit,
     mode: DisplayMode, onModeChange: (DisplayMode) -> Unit, showToggle: Boolean,
+    onRefresh: () -> Unit, refreshing: Boolean,
 ) {
     Column(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 12.dp),
+        Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp, top = 12.dp, bottom = 20.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             QuotaWordmark(Modifier.weight(1f))
             if (demo) SampleDataChip(Modifier.padding(end = 8.dp))
-            SeverityPill(severity)
+            IconButton(onClick = onRefresh, enabled = !refreshing) {
+                Icon(Icons.Filled.Refresh, "Refresh usage", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             IconButton(onClick = onUnpair) {
                 Icon(Icons.Filled.LinkOff, if (demo) "Leave sample data" else "Disconnect this phone",
                     Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+        Text("Your capacity", style = MaterialTheme.typography.headlineLarge)
         Row(Modifier.fillMaxWidth().padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(ageLabel, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
+            Text(if (demo) "A preview of your day" else ageLabel, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (showToggle) DisplayToggle(mode, onModeChange)
         }
@@ -135,7 +146,7 @@ private fun DisplayToggle(mode: DisplayMode, onModeChange: (DisplayMode) -> Unit
             ) {
                 Text(
                     label,
-                    Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                    Modifier.heightIn(min = 48.dp).wrapContentHeight().padding(horizontal = 16.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.labelLarge,
                     color = if (selected) MaterialTheme.colorScheme.onSurface
                     else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -180,36 +191,53 @@ private fun ProviderCard(
     name: String, provider: Provider, stale: Boolean, now: Instant,
     mode: DisplayMode,
 ) {
-    Card(shape = RoundedCornerShape(20.dp),
+    val windows = provider.glanceWindows()
+    val hero = windows.firstOrNull()
+    var expanded by remember(name) { mutableStateOf(false) }
+    Card(shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .55f)),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            val windows = provider.glanceWindows()
-            val hero = windows.firstOrNull()
-            if (hero != null) {
-                RingGauge(hero, stale, diameter = 112.dp, showDetails = false, mode = mode)
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ProviderMark(ProviderId.of(name.lowercase()), stale = stale)
-                    Text(name, style = MaterialTheme.typography.titleLarge)
-                }
-                Text(providerSubtitle(name, provider.plan), style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (hero != null) {
-                    Text(hero.label.ifEmpty { hero.id }, style = MaterialTheme.typography.titleSmall)
-                    Text(formatResetsIn(hero.resetsIn(now)), style = MaterialTheme.typography.bodySmall,
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ProviderMark(ProviderId.of(name.lowercase()), stale = stale)
+                Column(Modifier.weight(1f)) {
+                    Text(name, style = MaterialTheme.typography.titleMedium)
+                    val subtitle = providerSubtitle(name, provider.plan)
+                    if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    windows.drop(1).forEach { window ->
-                        Text("${window.label.ifEmpty { window.id }} ${window.shown(mode)}% ${if (mode.isUsed) "used" else "left"}",
-                            style = MaterialTheme.typography.bodySmall,
+                }
+                if (hero != null) SeverityPill(if (stale) Severity.STALE else hero.severity)
+            }
+            if (hero != null) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    RingGauge(hero, stale, diameter = 112.dp, resetsIn = hero.resetsIn(now), showDetails = false, mode = mode)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(hero.label.ifEmpty { hero.id }, style = MaterialTheme.typography.titleMedium)
+                        Text(formatResetsIn(hero.resetsIn(now)), style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                } else {
-                    Text("No data", style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                if (windows.size > 1 && expanded) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
+                    windows.drop(1).forEach { window ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text(window.label.ifEmpty { window.id }, Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${window.shown(mode)}% ${if (mode.isUsed) "used" else "left"}",
+                                style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+                }
+                if (windows.size > 1) {
+                    TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) {
+                        Text(if (expanded) "Hide details" else "Details")
+                    }
+                }
+            } else {
+                Text("No data", style = MaterialTheme.typography.titleMedium)
+                Text(if (provider.extra.containsKey("error")) "Couldn’t read this provider. Check its connection on your Mac." else "Waiting for a usage reading from your Mac.", style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

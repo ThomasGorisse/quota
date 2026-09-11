@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark light">
-  <meta name="theme-color" content="#0B0F14" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111714" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F5F4EF" media="(prefers-color-scheme: light)">
   <meta name="description" content="Quota — your AI usage at a glance. See how much Claude, Codex and Gemini capacity you have left.">
   <meta name="referrer" content="no-referrer">
   <title>Quota — your AI usage at a glance</title>
@@ -30,24 +30,33 @@
 
     <main id="pairing" class="pairing" hidden>
       <section class="pairing-card" aria-labelledby="pairing-title">
-        <span class="eyebrow">YOUR CAPACITY, AT A GLANCE.</span>
-        <h2 id="pairing-title">Can you keep working?</h2>
-        <p>Pair this screen to see how much Claude, Codex and Gemini you have left.</p>
+        <span class="eyebrow">ONE QUIET PLACE FOR YOUR AI.</span>
+        <h2 id="pairing-title">Make room for<br>your next idea.</h2>
+        <p>See your Claude, Codex and Gemini limits together. Know what’s left, and when it comes back.</p>
+        <div class="pairing-providers" aria-label="Works with Claude, Codex and Gemini"><span>Claude</span><span>Codex</span><span>Gemini</span></div>
         <form id="pairing-form">
-          <label for="pairing-url">Pairing URL</label>
+          <label for="pairing-url">Your pairing link</label>
           <input id="pairing-url" type="url" placeholder="https://your-host/#t=…" autocomplete="off" autocapitalize="off" spellcheck="false" required aria-describedby="pairing-help pairing-error">
-          <p class="help" id="pairing-help">Paste the link printed by your collector. It stays on this device.</p>
+          <p class="help" id="pairing-help">Copy the pairing link from the Quota collector on your computer. Your link stays on this device.</p>
           <p class="form-error" id="pairing-error" role="alert" hidden></p>
           <button type="submit">Pair this screen <span aria-hidden="true">↗</span></button>
         </form>
-        <a class="demo-link" href="?demo=1">Take a look with demo data <span aria-hidden="true">→</span></a>
+        <a class="demo-link" href="./setup.html">Set up the Mac collector →</a>
+        <a class="demo-link" href="?demo=1">Explore the demo <span aria-hidden="true">→</span></a>
       </section>
     </main>
 
     <main id="dashboard" class="dashboard" hidden aria-label="AI capacity remaining">
+      <div class="dashboard-heading"><div><span class="eyebrow">AT A GLANCE</span><h2>Your capacity.</h2><p>One clear answer: how much room do you have left?</p></div><span class="heading-note">Updated automatically</span></div>
       <div class="notice" id="notice" role="status" hidden></div>
       <div class="providers" id="providers"></div>
-      <footer class="footer"><span id="footer-note">Every number is what’s <strong>left.</strong></span><div class="footer-actions"><button id="history-toggle" type="button" aria-pressed="false">History</button><span id="refresh-note">Refreshes every 60 s</span></div></footer>
+      <footer class="footer"><span id="footer-note">Every number is what’s <strong>left.</strong></span><div class="footer-actions"><button id="history-toggle" type="button" aria-pressed="false">History</button><span id="refresh-note">Refreshes every minute</span><button id="wake-toggle" type="button" aria-pressed="false" hidden>Keep awake</button><button id="fullscreen-toggle" type="button" hidden>Full screen</button><button id="trmnl-toggle" type="button" aria-expanded="false" aria-controls="trmnl-panel">Connect TRMNL</button><a href="./setup.html">Setup</a><a href="./privacy.html">Privacy</a></div></footer><p id="screen-notice" class="help" role="status" hidden></p>
+      <section id="trmnl-panel" class="integration-panel" aria-labelledby="trmnl-title" hidden>
+        <div class="integration-heading"><div><span class="eyebrow">ON YOUR DESK</span><h2 id="trmnl-title">Connect your TRMNL.</h2></div><button id="trmnl-close" type="button" aria-label="Close TRMNL settings">×</button></div>
+        <p>Create a private Webhook plugin in TRMNL, paste the <a href="./downloads/quota.liquid" download>Quota template</a> into its Full view, then copy its webhook URL below.</p>
+        <form id="trmnl-form"><label for="trmnl-url">TRMNL webhook URL</label><input id="trmnl-url" type="url" placeholder="https://trmnl.com/api/custom_plugins/…" autocomplete="off" autocapitalize="off" spellcheck="false" required aria-describedby="trmnl-help trmnl-message"><p id="trmnl-help">Quota sends your limits to this plugin every five minutes. Add the plugin to your TRMNL playlist to see them.</p><div class="integration-actions"><button id="trmnl-save" type="submit">Connect display</button><button id="trmnl-disconnect" type="button" hidden>Disconnect</button></div></form>
+        <p id="trmnl-message" role="status" hidden></p>
+      </section>
     </main>
     <noscript><p class="notice">Enable JavaScript to pair this screen and see your limits.</p></noscript>
   </div>

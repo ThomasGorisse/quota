@@ -102,6 +102,11 @@
     };
   }
 
+  function providerIsStale(provider) {
+    const measured = Date.parse(provider?.measured_at || provider?.extra?.measured_at || '');
+    return provider?.stale === true || (Number.isFinite(measured) && Date.now() - measured > 600000);
+  }
+
   function severity(used) { return used > 85 ? 'critical' : used >= 60 ? 'warn' : 'ok'; }
   function validPercent(value) { return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100; }
   function ageSeconds() {
@@ -171,7 +176,13 @@
     card.setAttribute('aria-labelledby', `${id}-title`);
     const icon = marks[id];
     // Only fixed, local markup is inserted as HTML. API strings use textContent.
-    card.innerHTML = `<header class="provider-header"><div class="provider-identity"><span class="provider-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${icon}</svg></span><div><h2 id="${id}-title">${providerNames[id]}</h2><div class="provider-subtitle">${subtitles[id]}</div></div></div></header><div class="gauges"></div><p class="provider-empty" hidden>No limits reported yet</p><div class="history" hidden><div class="history-heading"><span>Last 24 hours</span><span class="history-legend"><span class="legend-primary"><i class="history-key"></i><span class="legend-text"></span></span><span class="legend-secondary"><i class="history-key week"></i><span class="legend-text"></span></span></span></div><svg viewBox="0 0 600 60" preserveAspectRatio="none" role="img" aria-label="${providerNames[id]} remaining capacity over the last 24 hours"><line class="history-baseline" x1="0" y1="59" x2="600" y2="59"/><polyline class="session-line"/><polyline class="weekly-line"/></svg></div>`;
+    card.innerHTML = `<header class="provider-header"><div class="provider-identity"><span class="provider-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${icon}</svg></span><div><h2 id="${id}-title">${providerNames[id]}</h2><div class="provider-subtitle">${subtitles[id]}</div></div></div><span class="provider-state"></span></header><div class="gauges"></div><button class="details-toggle" type="button" aria-expanded="false">Details</button><p class="provider-empty" hidden>No limits reported yet</p><div class="history" hidden><div class="history-heading"><span>Last 24 hours</span><span class="history-legend"><span class="legend-primary"><i class="history-key"></i><span class="legend-text"></span></span><span class="legend-secondary"><i class="history-key week"></i><span class="legend-text"></span></span></span></div><svg viewBox="0 0 600 60" preserveAspectRatio="none" role="img" aria-label="${providerNames[id]} remaining capacity over the last 24 hours"><line class="history-baseline" x1="0" y1="59" x2="600" y2="59"/><polyline class="session-line"/><polyline class="weekly-line"/></svg></div>`;
+    const detailsToggle = card.querySelector('.details-toggle');
+    detailsToggle.addEventListener('click', () => {
+      const expanded = card.classList.toggle('expanded');
+      detailsToggle.setAttribute('aria-expanded', String(expanded));
+      detailsToggle.textContent = expanded ? 'Hide details' : 'Details';
+    });
     $('#providers').append(card);
     const entry = { element: card, gauges: new Map() };
     cards.set(id, entry);
@@ -227,18 +238,19 @@
     $('#dashboard').setAttribute('aria-label', usedMode() ? 'AI capacity used' : 'AI capacity remaining');
     const age = ageSeconds();
     const stale = snapshot.stale === true || age > 600;
+    const partialStale = Object.values(snapshot.providers).some(providerIsStale);
     const allWindows = Object.values(snapshot.providers).flatMap((p) => Array.isArray(p?.windows) ? p.windows : []);
     const used = allWindows.filter((w) => w && validPercent(w.percent)).map((w) => w.percent);
     const worst = used.length ? severity(Math.max(...used)) : 'loading';
     // Honour the server's overall status; never understate a window's severity.
     const ranks = { loading: -1, ok: 0, warn: 1, critical: 2 };
-    const overall = stale ? 'stale' : ranks[snapshot.severity] > ranks[worst] ? snapshot.severity : worst;
+    const overall = stale || partialStale ? 'stale' : ranks[snapshot.severity] > ranks[worst] ? snapshot.severity : worst;
     $('#severity').dataset.severity = overall;
     $('#severity').textContent = { ok: 'Ready', warn: 'Running low', critical: 'Nearly empty', stale: 'Out of date', loading: 'No data' }[overall];
     $('#updated').textContent = elapsedText(age);
     $('#dashboard').classList.toggle('is-stale', stale);
     const seen = new Date(snapshot.collected_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-    $('#notice').textContent = [stale ? `Out of date · last update ${seen}` : '', failure].filter(Boolean).join(' · ');
+    $('#notice').textContent = [stale ? `Out of date · last update ${seen}` : partialStale ? 'Some providers are out of date. Their last known limits are shown in grey.' : '', failure].filter(Boolean).join(' · ');
     $('#notice').hidden = !$('#notice').textContent;
 
     const visible = visibleProviders();
@@ -254,6 +266,8 @@
       card.element.querySelector('.history svg')
         .setAttribute('aria-label', `${providerNames[id]} capacity ${usedMode() ? 'used' : 'remaining'} over the last 24 hours`);
       const provider = snapshot.providers[id];
+      const providerStale = stale || providerIsStale(provider);
+      card.element.classList.toggle('is-stale', providerStale);
       const plan = provider?.plan || '';
       const titlePlan = plan ? plan[0].toUpperCase() + plan.slice(1) : '';
       card.element.querySelector('.provider-subtitle').textContent = id === 'codex'
@@ -262,6 +276,10 @@
       const providerSlot = $('#providers').children[providerIndex];
       if (providerSlot !== card.element) $('#providers').insertBefore(card.element, providerSlot || null);
       const reported = reportedWindows(id);
+      const state = providerStale ? 'stale' : reported.length ? severity(reported[0].percent) : 'loading';
+      const stateLabel = card.element.querySelector('.provider-state');
+      stateLabel.dataset.severity = state;
+      stateLabel.textContent = { ok: 'Available', warn: 'Running low', critical: 'Nearly empty', stale: 'Out of date', loading: 'No data' }[state];
       // A window that vanished from the payload must take its gauge with it.
       for (const [windowId, gauge] of card.gauges) {
         if (!reported.some((w) => w.id === windowId)) { gauge.remove(); card.gauges.delete(windowId); }
@@ -284,14 +302,14 @@
         const word = usedMode() ? 'used' : 'remaining';
         const meter = gauge.querySelector('.meter');
         const ring = gauge.querySelector('.ring-fill');
-        gauge.dataset.severity = stale || !valid ? 'stale' : severity(data.percent);
+        gauge.dataset.severity = providerStale || !valid ? 'stale' : severity(data.percent);
         gauge.querySelector('.number').textContent = valid ? String(shown) : '—';
         gauge.querySelector('.percent').hidden = !valid;
         gauge.querySelector('.remaining').textContent = usedMode() ? 'used' : 'left';
         meter.setAttribute('aria-label', `${providerNames[id]} ${data.text} ${word}`);
         if (valid) meter.setAttribute('aria-valuenow', shown);
         else meter.removeAttribute('aria-valuenow');
-        meter.setAttribute('aria-valuetext', valid ? `${shown}% ${word}${stale ? ', stale data' : ''}` : 'Unavailable');
+        meter.setAttribute('aria-valuetext', valid ? `${shown}% ${word}${providerStale ? ', stale data' : ''}` : 'Unavailable');
         const offset = valid ? String(100 - shown) : '100';
         if (ring.dataset.offset !== offset) {
           if (ring.dataset.offset !== undefined) ring.classList.add('has-value');
@@ -421,6 +439,113 @@
     try { localStorage.setItem('quota.history', String(showHistory)); } catch { /* Still works for this visit. */ }
     render();
   });
+  let trmnlBusy = false;
+  function trmnlMessage(message) {
+    $('#trmnl-message').textContent = message;
+    $('#trmnl-message').hidden = !message;
+  }
+  function trmnlControls(busy) {
+    trmnlBusy = busy;
+    for (const id of ['trmnl-save', 'trmnl-disconnect', 'trmnl-url']) $(`#${id}`).disabled = busy || demo;
+  }
+  function paintTrmnl(settings) {
+    const connected = typeof settings.trmnl_webhook_url === 'string' && !!settings.trmnl_webhook_url;
+    $('#trmnl-url').value = connected ? settings.trmnl_webhook_url : '';
+    $('#trmnl-save').textContent = connected ? 'Save changes' : 'Connect display';
+    $('#trmnl-disconnect').hidden = !connected;
+  }
+  async function trmnlRequest(method, value) {
+    const response = await fetch('/v1/settings', {
+      method, headers: { Authorization: `Bearer ${token}`, ...(method === 'PUT' ? { 'content-type': 'application/json' } : {}) },
+      ...(method === 'PUT' ? { body: JSON.stringify({ trmnl_webhook_url: value }) } : {}),
+      cache: 'no-store', credentials: 'omit', redirect: 'error', signal: AbortSignal.timeout(15000)
+    });
+    if (!response.ok) throw new Error('Settings unavailable');
+    return response.json();
+  }
+  $('#trmnl-toggle').addEventListener('click', async () => {
+    const panel = $('#trmnl-panel');
+    panel.hidden = !panel.hidden;
+    $('#trmnl-toggle').setAttribute('aria-expanded', String(!panel.hidden));
+    if (panel.hidden) return;
+    if (demo) { trmnlControls(false); trmnlMessage('Pair this screen with your collector to connect a real TRMNL display.'); return; }
+    trmnlControls(true);
+    trmnlMessage('Loading your display settings…');
+    try { paintTrmnl(await trmnlRequest('GET')); trmnlMessage(''); }
+    catch { trmnlMessage('Couldn’t load your display settings. Close this panel and try again.'); }
+    finally { trmnlControls(false); }
+  });
+  $('#trmnl-close').addEventListener('click', () => {
+    $('#trmnl-panel').hidden = true;
+    $('#trmnl-toggle').setAttribute('aria-expanded', 'false');
+    $('#trmnl-toggle').focus();
+  });
+  async function saveTrmnl(value) {
+    if (trmnlBusy || demo || !token) return;
+    trmnlControls(true);
+    trmnlMessage('Saving…');
+    try {
+      paintTrmnl(await trmnlRequest('PUT', value));
+      trmnlMessage(value ? 'Connected. Your next update will arrive within five minutes.' : 'Disconnected. Quota will stop sending updates to this display.');
+    } catch { trmnlMessage('Couldn’t save your display settings. Please try again.'); }
+    finally { trmnlControls(false); }
+  }
+  $('#trmnl-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    try {
+      const url = new URL($('#trmnl-url').value.trim());
+      if (url.protocol !== 'https:' || !['trmnl.com', 'usetrmnl.com'].includes(url.hostname) || !/^\/api\/custom_plugins\/[^/]+$/.test(url.pathname) || url.username || url.password || url.search || url.hash) throw new Error('Invalid webhook');
+      saveTrmnl(url.href);
+    } catch { trmnlMessage('Paste the complete HTTPS webhook URL from your TRMNL private plugin.'); }
+  });
+  $('#trmnl-disconnect').addEventListener('click', () => saveTrmnl(null));
+
+  let wakeWanted = false;
+  let wakeLock = null;
+  function screenNotice(message) {
+    $('#screen-notice').textContent = message;
+    $('#screen-notice').hidden = !message;
+  }
+  async function acquireWakeLock() {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      $('#wake-toggle').setAttribute('aria-pressed', 'true');
+      $('#wake-toggle').textContent = 'Keeping awake';
+      wakeLock.addEventListener('release', () => {
+        wakeLock = null;
+        $('#wake-toggle').setAttribute('aria-pressed', 'false');
+        $('#wake-toggle').textContent = 'Keep awake';
+      });
+      screenNotice('');
+    } catch {
+      wakeWanted = false;
+      screenNotice('This browser could not keep the screen awake. Check your device’s display settings.');
+    }
+  }
+  if ('wakeLock' in navigator) {
+    $('#wake-toggle').hidden = false;
+    $('#wake-toggle').addEventListener('click', async () => {
+      wakeWanted = !wakeWanted;
+      if (wakeWanted) await acquireWakeLock();
+      else await wakeLock?.release();
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && wakeWanted && !wakeLock) acquireWakeLock();
+    });
+  }
+  if (document.fullscreenEnabled) {
+    $('#fullscreen-toggle').hidden = false;
+    $('#fullscreen-toggle').addEventListener('click', async () => {
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen();
+        screenNotice('');
+      } catch { screenNotice('Full screen is not available in this browser.'); }
+    });
+    document.addEventListener('fullscreenchange', () => {
+      $('#fullscreen-toggle').textContent = document.fullscreenElement ? 'Exit full screen' : 'Full screen';
+    });
+  }
   window.addEventListener('hashchange', start);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
   setInterval(() => { if (!document.hidden) refresh(); }, 60000);
