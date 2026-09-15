@@ -49,6 +49,36 @@ beforeEach(() => {
   env = { QUOTA: fakeKv() } as never;
 });
 
+/** The Worker reads /install.md through the assets binding. */
+function fakeAssets(body: string | null) {
+  return {
+    async fetch(input: Request | string | URL) {
+      const path = new URL(String(input instanceof Request ? input.url : input)).pathname;
+      if (path !== '/install.md' || body === null) return new Response('not found', { status: 404 });
+      return new Response(body, { headers: { 'content-type': 'text/plain' } });
+    },
+  } as unknown as Env['ASSETS'];
+}
+
+describe('GET /install', () => {
+  it('serves the versioned install.md as markdown, without a token', async () => {
+    const withAssets = { ...env, ASSETS: fakeAssets('# Install Quota') } as Env;
+    for (const path of ['/install', '/install.md']) {
+      const res = await worker.fetch(req(path), withAssets);
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toBe('text/markdown; charset=utf-8');
+      expect(await res.text()).toContain('# Install Quota');
+    }
+  });
+
+  it('404s when the document is missing, and refuses writes', async () => {
+    const empty = { ...env, ASSETS: fakeAssets(null) } as Env;
+    expect((await worker.fetch(req('/install'), empty)).status).toBe(404);
+    const post = req('/install', { method: 'POST' });
+    expect((await worker.fetch(post, { ...env, ASSETS: fakeAssets('x') } as Env)).status).toBe(404);
+  });
+});
+
 describe('routes', () => {
   it('rejects a missing or malformed bearer token', async () => {
     expect((await worker.fetch(req('/v1/status'), env)).status).toBe(401);

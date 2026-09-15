@@ -3,7 +3,33 @@
 A private plugin with the **webhook** strategy: the Cloudflare Worker pushes the latest
 snapshot every 5 minutes, TRMNL redraws on its own refresh schedule.
 
-## Set it up (4 steps)
+## Set it up
+
+```bash
+bash trmnl/setup.sh --dry-run   # prints every request, sends none
+bash trmnl/setup.sh
+```
+
+The script needs a TRMNL **Developer** licence: that is what unlocks the Account API key
+(trmnl.com → Account → API key, starts with `user_`). Put it in `~/.quota/trmnl-api-key`
+(chmod 600) or in `$TRMNL_API_KEY`. It creates or reuses a private plugin named `Quota` with
+the webhook strategy, uploads [`quota.liquid`](./quota.liquid) as `markup_full`, adds the
+plugin to the device playlist, registers the webhook URL with the relay using the device
+token from `~/.quota/config.json`, and renders a preview to `~/.quota/trmnl-preview.png`.
+
+One step stays manual, and it is TRMNL's fault, not ours: **no endpoint exposes a private
+plugin's UUID** — not the list, not `/details`, not `/archive` — and `POST
+/api/devices/{id}/playlist_items` accepts only that UUID (the integer id answers *Plugin
+setting not found*). So the script stops once, tells you to copy the Webhook URL from
+`https://trmnl.com/plugin_settings/<id>/edit`, and you re-run it with
+`--webhook-url <url>`. It remembers the URL in `~/.quota/trmnl-webhook` afterwards.
+
+Verified against the live API on 2026-09-15: private plugins are `plugin_id` 37 (override
+with `--plugin-id`); the markup linter **rejects a hand-written `view view--full` wrapper**,
+so the template starts at `.layout`; screenshots take **no** `device_model` (`og` and
+`og_png` are both refused) and their job ids expire within seconds.
+
+## By hand instead
 
 1. **Create the plugin.** TRMNL dashboard → *Plugins* → *Private Plugin* → *Add new*.
    Name it `Quota`, strategy **Webhook**. Save.
@@ -97,6 +123,8 @@ value from 100 a second time. Unreported windows never become 100% remaining.
   a dashed outline and explicit “Out of date” label.
 - The template accepts variables at the root or under `merge_variables`, and escapes
   provider strings before rendering.
+- `.claude/skills/trmnl/` vendors TRMNL's own agent skill (MIT, usetrmnl/trmnl-agent-skills
+  @ 3f9062e): the design-system rules this template has to satisfy.
 - After saving the plugin, add it to the device playlist and confirm the physical
   display refreshes. The browser preview checks layout; actual device delivery requires
   the TRMNL dashboard and a connected device.

@@ -229,3 +229,9 @@ h1 { font-size: 28px; line-height: 1; letter-spacing: -.06em; margin: 0; font-we
   .hero .value { font-size: 27px; }
   .hero .gauge-label { font-size: 12px; }
 }
+
+/* Pairing QR. White quiet zone in both themes: a scanner needs the contrast, not the theme. */
+#pair-toggle { min-height: 40px; border: 0; background: transparent; color: var(--muted); font-size: 11px; cursor: pointer; padding: 6px; }
+#pair-panel .qr { width: min(100%, 260px); margin: 24px 0 8px; padding: 12px; background: #fff; border-radius: 12px; }
+#pair-panel .qr svg { display: block; width: 100%; height: auto; }
+#pair-message { font-size: 12px; color: var(--muted); }
