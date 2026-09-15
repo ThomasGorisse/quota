@@ -13,6 +13,10 @@ tiny backend, many thin clients.
   credential.
 - Mac collector: LaunchAgent `com.gorisse.thomas.quota.collector`, every 180 s,
   `bash collector/install.sh`. Log: `~/.quota/collector.log`.
+- Install: one prompt pasted into Claude Code, Codex CLI or Gemini CLI —
+  *Read https://quota.sceneview.dev/install (curl it if you have no web access) and follow it
+  to install Quota on this Mac.* The agent reads [`web/install.md`](web/install.md), served
+  as markdown by the Worker at `/install` and `/install.md`. The zip stays as the manual path.
 
 ## Architecture
 
@@ -27,6 +31,7 @@ Mac (collector, LaunchAgent, every 3 min)
 Cloudflare Worker + KV  (worker/)
   ├─ GET  /v1/status      → latest snapshot + 24 h history + stale flag   (all clients)
   ├─ GET  /               → web dashboard (web/), token in URL fragment    (any screen)
+  ├─ GET  /install        → web/install.md as text/markdown          (one-prompt install)
   ├─ PUT  /v1/settings    → TRMNL webhook URL, alert thresholds, display mode
   └─ cron */5 → push merge_variables to TRMNL webhook (trmnl/)
         ▲
@@ -112,11 +117,14 @@ collector generates on first run and prints as a pairing URL `https://<host>/#t=
 | `worker/` | Cloudflare Worker (TypeScript), KV namespace `QUOTA` |
 | `web/` | Dashboard, static, served by the worker at `/` |
 | `android/` | Compose app + Glance widget, package `com.gorisse.thomas.quota` |
-| `trmnl/` | Liquid template for the TRMNL plugin |
+| `trmnl/` | Liquid template for the TRMNL plugin, plus `setup.sh` to provision it |
+| `tools/` | `build-collector-zip.sh` rebuilds everything `web/downloads/` serves |
 | `docs/` | Design tokens, decisions |
 
 ## Current delivery
 
-Public setup and collector download: https://quota.sceneview.dev/setup.html
+Public setup: https://quota.sceneview.dev/setup.html — one prompt, with the zip as fallback.
+Rebuild the downloads after touching `collector/` or `trmnl/`:
+`bash tools/build-collector-zip.sh` (reproducible; an unchanged collector produces no diff).
 
 See [the complete platform handoff](docs/RELEASE-2026-09-11.md) for all original target devices and verified release state.
