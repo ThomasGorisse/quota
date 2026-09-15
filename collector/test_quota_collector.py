@@ -262,5 +262,79 @@ class ProviderReadings(unittest.TestCase):
             self.assertEqual(qc.collect_claude()["windows"], [])
 
 
+# Recorded from `GET api.anthropic.com/api/oauth/usage` on 2026-09-15: `limits` carries the
+# same two aggregate windows as five_hour/seven_day, plus one row per scoped model.
+CLAUDE_USAGE = {
+    "five_hour": {"utilization": 50, "resets_at": "2026-09-16T00:50:00.208814+00:00"},
+    "seven_day": {"utilization": 20, "resets_at": "2026-09-19T12:00:00.208832+00:00"},
+    "limits": [
+        {"kind": "session", "group": "session", "percent": 50,
+         "resets_at": "2026-09-16T00:50:00.208814+00:00", "scope": None},
+        {"kind": "weekly_all", "group": "weekly", "percent": 20,
+         "resets_at": "2026-09-19T12:00:00.208832+00:00", "scope": None},
+        {"kind": "weekly_scoped", "group": "weekly", "percent": 18,
+         "resets_at": "2026-09-19T12:00:00.209021+00:00",
+         "scope": {"model": {"id": None, "display_name": "Fable"}, "surface": None}},
+    ],
+    "extra_usage": {"is_enabled": False},
+}
+
+
+class ClaudeScopedWindows(unittest.TestCase):
+    """Per-model weekly windows come from `limits`; the first two windows never move."""
+
+    def collect(self, data):
+        with mock.patch.object(qc, "claude_credentials", return_value=("test", "Max")), \
+             mock.patch.object(qc, "get_json", return_value=data):
+            return qc.collect_claude()["windows"]
+
+    def test_scoped_weekly_window_follows_session_and_weekly(self):
+        windows = self.collect(CLAUDE_USAGE)
+        self.assertEqual([w["id"] for w in windows], ["session", "weekly", "weekly_fable"])
+        fable = windows[2]
+        self.assertEqual(fable["label"], "Week · Fable")
+        self.assertEqual(fable["percent"], 18)
+        self.assertEqual(fable["resets_at"], "2026-09-19T12:00:00Z")
+
+    def test_aggregate_rows_of_limits_are_not_duplicated(self):
+        ids = [w["id"] for w in self.collect(CLAUDE_USAGE)]
+        self.assertEqual(ids.count("session"), 1)
+        self.assertEqual(ids.count("weekly"), 1)
+
+    def test_missing_limits_keeps_the_previous_behaviour(self):
+        data = {k: v for k, v in CLAUDE_USAGE.items() if k != "limits"}
+        self.assertEqual([w["id"] for w in self.collect(data)], ["session", "weekly"])
+        self.assertEqual([w["id"] for w in self.collect({**CLAUDE_USAGE, "limits": "nope"})],
+                         ["session", "weekly"])
+
+    def test_several_models_each_get_a_window(self):
+        rows = [
+            {"kind": "weekly_scoped", "percent": 18, "resets_at": None,
+             "scope": {"model": {"display_name": "Fable"}}},
+            {"kind": "weekly_scoped", "percent": 4, "resets_at": None,
+             "scope": {"model": {"display_name": "Claude Opus 4.5"}}},
+        ]
+        windows = self.collect({**CLAUDE_USAGE, "limits": rows})
+        self.assertEqual([w["id"] for w in windows][2:], ["weekly_fable", "weekly_claude_opus_4_5"])
+        self.assertEqual(windows[3]["label"], "Week · Claude Opus 4.5")
+
+    def test_unreadable_scoped_rows_are_skipped_not_zeroed(self):
+        rows = [
+            {"kind": "weekly_scoped", "percent": None, "scope": {"model": {"display_name": "A"}}},
+            {"kind": "weekly_scoped", "percent": True, "scope": {"model": {"display_name": "B"}}},
+            {"kind": "weekly_scoped", "percent": 101, "scope": {"model": {"display_name": "C"}}},
+            {"kind": "weekly_scoped", "percent": -1, "scope": {"model": {"display_name": "D"}}},
+            {"kind": "weekly_scoped", "percent": 10, "scope": None},
+            {"kind": "weekly_scoped", "percent": 10, "scope": {"model": {"display_name": "  "}}},
+            "junk",
+            {"kind": "weekly_scoped", "percent": 12, "scope": {"model": {"display_name": "Fable"}}},
+            # A second row for the same model must not overwrite the first.
+            {"kind": "weekly_scoped", "percent": 99, "scope": {"model": {"display_name": "Fable"}}},
+        ]
+        windows = self.collect({**CLAUDE_USAGE, "limits": rows})
+        self.assertEqual([w["id"] for w in windows], ["session", "weekly", "weekly_fable"])
+        self.assertEqual(windows[2]["percent"], 12)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

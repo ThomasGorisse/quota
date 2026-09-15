@@ -174,12 +174,50 @@ def collect_claude() -> dict[str, Any]:
                 "resets_at": normalize_iso(block.get("resets_at")),
             }
         )
+    windows.extend(claude_scoped_windows(data.get("limits"), {w["id"] for w in windows}))
     extra_usage = data.get("extra_usage") or {}
     return {
         "plan": plan,
         "windows": windows,
         "extra": {"extra_usage_enabled": bool(extra_usage.get("is_enabled"))},
     }
+
+
+def claude_scoped_windows(limits: Any, taken: set[str]) -> list[dict[str, Any]]:
+    """Per-model weekly windows, from the `limits` array of the usage response.
+
+    `five_hour`/`seven_day` stay the source of the first two windows, so an API that
+    stops sending `limits` simply drops the per-model rows instead of emptying the card.
+    Anything without a finite 0-100 percent, or without a model display name, is skipped:
+    a missing reading is never a full bucket.
+    """
+    out: list[dict[str, Any]] = []
+    if not isinstance(limits, list):
+        return out
+    for entry in limits:
+        if not isinstance(entry, dict) or entry.get("kind") != "weekly_scoped":
+            continue
+        model = ((entry.get("scope") or {}).get("model") or {}) if isinstance(entry.get("scope"), dict) else {}
+        name = model.get("display_name") if isinstance(model, dict) else None
+        if not isinstance(name, str) or not name.strip():
+            continue
+        value = entry.get("percent")
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 100:
+            continue
+        slug = re.sub(r"_+", "_", re.sub(r"[^a-z0-9]+", "_", name.strip().lower())).strip("_")
+        window_id = f"weekly_{slug}" if slug else "weekly_scoped"
+        if window_id in taken:
+            continue
+        taken.add(window_id)
+        out.append(
+            {
+                "id": window_id,
+                "label": f"Week · {name.strip()}",
+                "percent": round(float(value), 1),
+                "resets_at": normalize_iso(entry.get("resets_at")),
+            }
+        )
+    return out
 
 
 # ---------------------------------------------------------------------------- Codex
