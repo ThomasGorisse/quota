@@ -154,9 +154,19 @@ Quota relay. Ask for a yes, then:
 bash ~/.quota/trmnl-setup.sh
 ```
 
-With several devices on the account the script lists them and stops; re-run it with
-`--device <id>`. The script is idempotent: it reuses a plugin already named `Quota` and
-overwrites its markup rather than creating a second one.
+Two stops are expected, not failures:
+
+- **Several devices on the account** — the script lists them and exits; re-run with
+  `--device <id>`.
+- **The webhook URL** — TRMNL exposes a private plugin's UUID nowhere in its API (verified
+  against the live API on 2026-09-15), and the playlist needs it. The script prints the exact
+  page to open (`https://trmnl.com/plugin_settings/<id>/edit`), asks the human to copy the
+  Webhook URL, and exits with status 2. Ask them for it, then re-run:
+  `bash ~/.quota/trmnl-setup.sh --device <id> --webhook-url <the URL>`. That URL is a
+  credential too — it is saved to `~/.quota/trmnl-webhook`, so later runs do not ask again.
+
+The script is idempotent: it reuses a plugin already named `Quota` and overwrites its markup
+rather than creating a second one.
 
 ### 5d. Show the render
 

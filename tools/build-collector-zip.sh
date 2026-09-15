@@ -1,5 +1,5 @@
 #!/bin/bash
-# Rebuilds web/downloads/quota-collector.zip from collector/.
+# Rebuilds everything web/downloads/ serves: the collector zip, plus the TRMNL files.
 #
 #   bash tools/build-collector-zip.sh
 #
@@ -30,3 +30,9 @@ rm -f "$OUT"
 
 echo "Built $OUT"
 unzip -l "$OUT"
+
+# web/downloads/ is what the /install procedure curls, so the TRMNL files it fetches are
+# mirrored from their source of truth here rather than copied by hand.
+cp "$ROOT/trmnl/setup.sh" "$ROOT/web/downloads/trmnl-setup.sh"
+cp "$ROOT/trmnl/quota.liquid" "$ROOT/web/downloads/quota.liquid"
+echo "Mirrored trmnl/setup.sh and trmnl/quota.liquid into web/downloads/"
