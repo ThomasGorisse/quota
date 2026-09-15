@@ -168,11 +168,35 @@ export function buildStatus(
   };
 }
 
-/** Flat presentation variables; v1/status and the stored snapshot are unchanged. */
-export function buildMergeVariables(
-  status: StatusBody,
-  now: number,
-): Record<string, string | number | boolean> {
+/** One TRMNL window row: everything the template prints for a single quota window. */
+export interface MergeWindow {
+  id: string;
+  label: string;
+  value: number;
+  reset: string;
+  state: 'ok' | 'warn' | 'critical' | 'stale';
+  state_label: string;
+  /** True for the windows that get the large treatment on the board. */
+  weekly: boolean;
+}
+
+export type MergeVariables = Record<string, string | number | boolean | MergeWindow[]>;
+
+/**
+ * Is this window one of the provider's weekly buckets?
+ *
+ * Ids are provider-shaped, not a shared vocabulary: Claude sends `weekly`, `weekly_fable`,
+ * Codex sends `weekly` and `reserve` (its reserve refills on the weekly cadence), and every
+ * Gemini window is a per-model daily/weekly bucket with no session counterpart.
+ */
+export function isWeeklyWindow(providerId: string, windowId: string): boolean {
+  if (providerId === 'gemini') return true;
+  if (providerId === 'codex' && windowId === 'reserve') return true;
+  return windowId.startsWith('weekly');
+}
+
+/** Presentation variables for TRMNL; v1/status and the stored snapshot are unchanged. */
+export function buildMergeVariables(status: StatusBody, now: number): MergeVariables {
   const word = status.display === 'used' ? 'used' : 'left';
   const state = (used: number) => used > 85 ? 'critical' : used >= 60 ? 'warn' : 'ok';
   const wording = { ok: 'Ready', warn: 'Running low', critical: 'Nearly empty' };
@@ -186,8 +210,9 @@ export function buildMergeVariables(
     if (minutes < 1440) return `Resets in ${Math.floor(minutes / 60)} h ${minutes % 60} min`;
     return `Resets in ${Math.floor(minutes / 1440)} d ${Math.floor(minutes % 1440 / 60)} h`;
   };
-  const vars: Record<string, string | number | boolean> = {
-    layout_version: 2,
+  const shown = (used: number) => word === 'used' ? Math.round(used) : 100 - Math.round(used);
+  const vars: MergeVariables = {
+    layout_version: 3,
     display_word: word,
     updated: formatClock(status.collected_at),
     stale: status.stale,
@@ -195,29 +220,29 @@ export function buildMergeVariables(
   for (const id of ['claude', 'codex', 'gemini']) {
     const provider = status.providers[id];
     vars[`${id}_present`] = !!provider;
-    // Stable ties preserve declared order. No particular window id has priority.
-    const windows = (provider?.windows ?? [])
-      .filter(w => Number.isFinite(w.percent) && w.percent >= 0 && w.percent <= 100)
-      .map((w, order) => ({ ...w, order }))
-      .sort((a, b) => b.percent - a.percent || a.order - b.order);
-    const hero = windows[0];
-    vars[`${id}_has_value`] = !!hero;
     if (!provider) continue;
     const plan = provider.plan ?? '';
     const titlePlan = plan ? plan[0].toUpperCase() + plan.slice(1) : '';
     vars[`${id}_plan`] = id === 'codex'
       ? (/^chatgpt/i.test(plan) ? plan : `ChatGPT ${titlePlan}`.trim())
       : [id === 'claude' ? 'Anthropic' : 'Google', titlePlan].filter(Boolean).join(' · ');
-    if (!hero) continue; // Missing is never zero used / 100 left.
-    const shown = (used: number) => word === 'used' ? Math.round(used) : 100 - Math.round(used);
-    vars[`${id}_value`] = shown(hero.percent);
-    vars[`${id}_label`] = hero.label || hero.id;
-    vars[`${id}_reset`] = reset(hero.resets_at);
-    vars[`${id}_state`] = (status.stale || provider.stale) ? 'stale' : state(hero.percent);
-    vars[`${id}_state_label`] = (status.stale || provider.stale) ? 'Out of date' : wording[state(hero.percent)];
-    // Text is deliberately secondary. Reserve has no bespoke treatment. Three secondary
-    // windows is one line on the board, and keeps the payload inside TRMNL's 2 KB.
-    vars[`${id}_detail`] = windows.slice(1, 4).map(w => `${w.label || w.id} ${shown(w.percent)}% ${word}`).join(' · ');
+    const outdated = status.stale || !!provider.stale;
+    // Weekly first, then the rest; inside each group the collector's order is preserved,
+    // so `weekly` stays ahead of `weekly_fable`. Absent is never zero used / 100 left.
+    const rows = (provider.windows ?? [])
+      .filter(w => Number.isFinite(w.percent) && w.percent >= 0 && w.percent <= 100)
+      .map((w, order) => ({ w, order, weekly: isWeeklyWindow(id, w.id) }))
+      .sort((a, b) => Number(b.weekly) - Number(a.weekly) || a.order - b.order)
+      .map(({ w, weekly }): MergeWindow => ({
+        id: w.id,
+        label: w.label || w.id,
+        value: shown(w.percent),
+        reset: reset(w.resets_at),
+        state: outdated ? 'stale' : state(w.percent),
+        state_label: outdated ? 'Out of date' : wording[state(w.percent)],
+        weekly,
+      }));
+    vars[`${id}_windows`] = rows;
   }
   return vars;
 }

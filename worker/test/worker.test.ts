@@ -30,6 +30,7 @@ function snapshotBody(at = new Date().toISOString()) {
         windows: [
           { id: 'session', label: '5 h', percent: 18, resets_at: '2026-09-09T19:50:00Z' },
           { id: 'weekly', label: 'Week', percent: 61, resets_at: '2026-09-12T12:00:00Z' },
+          { id: 'weekly_fable', label: 'Week · Fable', percent: 18, resets_at: '2026-09-12T12:00:00Z' },
         ],
       },
       codex: {
@@ -186,16 +187,21 @@ describe('cron', () => {
     expect(url).toBe('https://trmnl.com/api/custom_plugins/abc');
     const body = JSON.parse(init.body as string);
     const v = body.merge_variables;
-    expect(v.layout_version).toBe(2);
-    expect(v.claude_value).toBe(39);
-    expect(v.claude_label).toBe('Week');
-    expect(v.claude_state).toBe('warn');
-    expect(v.codex_has_value).toBe(true);
-    expect(v.codex_value).toBe(90);
-    // Windows this plan does not have are simply absent from the payload.
-    expect(v.codex_reserve).toBeUndefined();
+    expect(v.layout_version).toBe(3);
+    // The whole window list travels end to end, weekly first, per-model row included.
+    expect(v.claude_windows.map((w: { id: string }) => w.id))
+      .toEqual(['weekly', 'weekly_fable', 'session']);
+    expect(v.claude_windows[0]).toMatchObject({ label: 'Week', value: 39, state: 'warn', weekly: true });
+    expect(v.claude_windows[1]).toMatchObject({ label: 'Week · Fable', value: 82, weekly: true });
+    expect(v.claude_windows[2]).toMatchObject({ label: '5 h', value: 82, weekly: false });
+    expect(v.codex_windows).toEqual([
+      { id: 'session', label: '5 h', value: 90, reset: 'Reset time unknown',
+        state: 'ok', state_label: 'Ready', weekly: false },
+    ]);
+    // Providers the collector never sent say so, and carry no windows at all.
     expect(v.gemini_present).toBe(false);
-    expect(JSON.stringify(body).length).toBeLessThan(2048);
+    expect(v.gemini_windows).toBeUndefined();
+    expect(JSON.stringify(body).length).toBeLessThan(4096);
     vi.unstubAllGlobals();
   });
 

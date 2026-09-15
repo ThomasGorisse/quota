@@ -89,10 +89,13 @@ Running low has a solid outlined label; Nearly empty has a black label with whit
 Out of date has a dashed label and a dashed ring, retaining the last reported number.
 These shapes carry the distinction without hue.
 
-`buildMergeVariables` supplies layout version 2, `display_word`, and per-provider presence,
-value, label, plan, reset, state and detail. This private presentation adapter does not change
-`GET /v1/status`. The Liquid template refuses legacy variables instead of guessing missing
-values. Update the template and Worker together; no deployment was performed in this pass.
+`buildMergeVariables` supplies layout version 3, `display_word`, and per provider its
+presence, plan and `<provider>_windows`: every valid window, weekly buckets first, each with
+its label, display-ready value, reset, state and `weekly` flag. No window is elected a hero
+any more — the board shows all of them, so Claude's per-model `Week · Fable` bucket is a row
+of its own rather than a fragment of a detail line. This private presentation adapter does
+not change `GET /v1/status`. The Liquid template refuses legacy variables instead of guessing
+missing values. Update the template and Worker together.
 
 ## 11 September visual update
 

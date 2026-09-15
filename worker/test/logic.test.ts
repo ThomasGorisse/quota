@@ -10,11 +10,13 @@ import {
   formatClock,
   formatResetsIn,
   isValidToken,
+  isWeeklyWindow,
   normalizeSettings,
   severityFor,
   validateSnapshot,
   worstSeverity,
 } from '../src/logic';
+import type { MergeWindow } from '../src/logic';
 import type { HistoryPoint, Snapshot } from '../src/types';
 
 const NOW = Date.parse('2026-09-09T18:00:00Z');
@@ -41,6 +43,15 @@ function snapshot(claudeSession = 11, weekly = 60, at = '2026-09-09T18:00:00Z'):
       },
     },
   };
+}
+
+/** Claude with the per-model weekly window the usage API added in September 2026. */
+function withFable(): Snapshot {
+  const base = snapshot();
+  base.providers.claude.windows.push({
+    id: 'weekly_fable', label: 'Week · Fable', percent: 18, resets_at: '2026-09-12T12:00:00Z',
+  });
+  return base;
 }
 
 /** A snapshot with the third provider: window ids are model names, not `session`/`weekly`. */
@@ -156,39 +167,52 @@ describe('history', () => {
 });
 
 describe('merge variables', () => {
-  it('flattens one hero and one detail line per provider', () => {
+  it('lists every window per provider, weekly ones first', () => {
     const status = buildStatus(snapshot(), [], DEFAULT_SETTINGS, NOW);
     const v = buildMergeVariables(status, NOW);
-    expect(v.layout_version).toBe(2);
+    expect(v.layout_version).toBe(3);
     expect(v.display_word).toBe('left');
     expect(v.updated).toBe('18:00');
     expect(v.stale).toBe(false);
-    // The hero is the window with the highest USED percent, never a fixed id.
     expect(v.claude_present).toBe(true);
-    expect(v.claude_has_value).toBe(true);
     expect(v.claude_plan).toBe('Anthropic · Max');
-    expect(v.claude_label).toBe('Week');
-    expect(v.claude_value).toBe(40);
-    expect(v.claude_reset).toBe('Resets in 2 d 18 h');
-    expect(v.claude_state).toBe('warn');
-    expect(v.claude_state_label).toBe('Running low');
-    expect(v.claude_detail).toBe('5 h 89% left');
+    // No hero any more: the whole list travels, weekly first, declared order inside a group.
+    expect(v.claude_windows).toEqual([
+      {
+        id: 'weekly', label: 'Week', value: 40, reset: 'Resets in 2 d 18 h',
+        state: 'warn', state_label: 'Running low', weekly: true,
+      },
+      {
+        id: 'session', label: '5 h', value: 89, reset: 'Resets in 2 h 10 min',
+        state: 'ok', state_label: 'Ready', weekly: false,
+      },
+    ]);
     expect(v.codex_plan).toBe('ChatGPT Plus');
-    expect(v.codex_label).toBe('5 h');
-    expect(v.codex_value).toBe(88);
-    expect(v.codex_reset).toBe('Resets in 1 h 38 min');
-    expect(v.codex_state).toBe('ok');
-    expect(v.codex_state_label).toBe('Ready');
-    expect(v.codex_detail).toBe('Reserve 90% left · Week 94% left');
-    expect(JSON.stringify(v).length).toBeLessThan(2048);
+    // Codex reserve refills weekly, so it rides with the weekly group, ahead of the session.
+    expect((v.codex_windows as MergeWindow[]).map((w) => [w.id, w.value, w.weekly])).toEqual([
+      ['weekly', 94, true],
+      ['reserve', 90, true],
+      ['session', 88, false],
+    ]);
+    expect(JSON.stringify(v).length).toBeLessThan(4096);
+  });
+
+  it('gives the per-model weekly window its own row', () => {
+    const v = buildMergeVariables(buildStatus(withFable(), [], DEFAULT_SETTINGS, NOW), NOW);
+    const rows = v.claude_windows as MergeWindow[];
+    expect(rows.map((w) => w.id)).toEqual(['weekly', 'weekly_fable', 'session']);
+    const fable = rows[1];
+    expect(fable.label).toBe('Week · Fable');
+    expect(fable.value).toBe(82);
+    expect(fable.weekly).toBe(true);
+    expect(fable.state).toBe('ok');
   });
 
   it('counts the used percent when the display says used', () => {
     const status = buildStatus(snapshot(), [], { ...DEFAULT_SETTINGS, display: 'used' }, NOW);
     const v = buildMergeVariables(status, NOW);
     expect(v.display_word).toBe('used');
-    expect(v.claude_value).toBe(60);
-    expect(v.claude_detail).toBe('5 h 11% used');
+    expect((v.claude_windows as MergeWindow[]).map((w) => w.value)).toEqual([60, 11]);
   });
 
   it('formats countdowns', () => {
@@ -212,52 +236,75 @@ describe('merge variables', () => {
     };
     const v = buildMergeVariables(buildStatus(noSession, [], DEFAULT_SETTINGS, NOW), NOW);
     expect(v.codex_present).toBe(true);
-    expect(v.codex_has_value).toBe(false);
-    expect(v.codex_value).toBeUndefined();
-    expect(v.codex_reset).toBeUndefined();
-    expect(v.codex_state).toBeUndefined();
+    expect(v.codex_windows).toEqual([]);
     expect(v.codex_plan).toBe('chatgpt pro 5x');
+  });
+
+  it('drops a window whose percentage is out of range instead of drawing it empty', () => {
+    const base = snapshot();
+    base.providers.claude.windows[1].percent = 140;
+    const v = buildMergeVariables(buildStatus(base, [], DEFAULT_SETTINGS, NOW), NOW);
+    expect((v.claude_windows as MergeWindow[]).map((w) => w.id)).toEqual(['session']);
   });
 
   it('says nothing at all about a provider the collector never sent', () => {
     const status = buildStatus({ collected_at: '2026-09-09T18:00:00Z', providers: {} }, [], DEFAULT_SETTINGS, NOW);
     const v = buildMergeVariables(status, NOW);
     expect(v.codex_present).toBe(false);
-    expect(v.codex_has_value).toBe(false);
     expect(v.codex_plan).toBeUndefined();
-    expect(v.codex_value).toBeUndefined();
+    expect(v.codex_windows).toBeUndefined();
   });
 
   it('says Gemini is absent when the collector skipped it', () => {
     const v = buildMergeVariables(buildStatus(snapshot(), [], DEFAULT_SETTINGS, NOW), NOW);
     expect(v.gemini_present).toBe(false);
-    expect(v.gemini_has_value).toBe(false);
-    expect(v.gemini_value).toBeUndefined();
+    expect(v.gemini_windows).toBeUndefined();
   });
 
-  it('flattens Gemini through the same hero rule', () => {
+  it('treats every Gemini bucket as a weekly window', () => {
     const v = buildMergeVariables(buildStatus(withGemini(), [], DEFAULT_SETTINGS, NOW), NOW);
     expect(v.gemini_present).toBe(true);
     expect(v.gemini_plan).toBe('Google · Standard');
-    expect(v.gemini_label).toBe('3 Pro');
-    expect(v.gemini_value).toBe(38);
-    expect(v.gemini_reset).toBe('Resets in 5 h 15 min');
-    expect(v.gemini_state).toBe('warn');
-    expect(v.gemini_detail).toBe('2.5 Pro 71% left');
-    expect(JSON.stringify(v).length).toBeLessThan(2048);
+    const rows = v.gemini_windows as MergeWindow[];
+    expect(rows.map((w) => [w.label, w.value, w.weekly])).toEqual([
+      ['3 Pro', 38, true],
+      ['2.5 Pro', 71, true],
+    ]);
+    expect(rows[0].reset).toBe('Resets in 5 h 15 min');
+    expect(rows[0].state).toBe('warn');
   });
 
-  it('marks every provider out of date when the snapshot is stale', () => {
+  it('sorts weekly windows first whatever the provider vocabulary', () => {
+    expect(isWeeklyWindow('claude', 'weekly')).toBe(true);
+    expect(isWeeklyWindow('claude', 'weekly_fable')).toBe(true);
+    expect(isWeeklyWindow('claude', 'session')).toBe(false);
+    expect(isWeeklyWindow('codex', 'reserve')).toBe(true);
+    expect(isWeeklyWindow('codex', 'session')).toBe(false);
+    expect(isWeeklyWindow('gemini', 'gemini-3-pro')).toBe(true);
+  });
+
+  it('marks every window of a stale snapshot out of date', () => {
     const v = buildMergeVariables(
       buildStatus(snapshot(11, 60, '2026-09-09T17:00:00Z'), [], DEFAULT_SETTINGS, NOW),
       NOW,
     );
     expect(v.stale).toBe(true);
-    expect(v.claude_state).toBe('stale');
-    expect(v.claude_state_label).toBe('Out of date');
+    expect((v.claude_windows as MergeWindow[]).every((w) => w.state === 'stale')).toBe(true);
+    expect((v.claude_windows as MergeWindow[])[0].state_label).toBe('Out of date');
+  });
+
+  it('stays inside the TRMNL payload budget with three providers and eight windows', () => {
+    const wide = withGemini();
+    wide.providers.claude.windows.push(
+      { id: 'weekly_fable', label: 'Week · Fable', percent: 18, resets_at: '2026-09-12T12:00:00Z' },
+    );
+    wide.providers.gemini.windows.push(
+      { id: 'gemini-3-flash', label: '3 Flash', percent: 10, resets_at: '2026-09-09T21:00:00Z' },
+    );
+    const v = buildMergeVariables(buildStatus(wide, [], DEFAULT_SETTINGS, NOW), NOW);
+    expect(JSON.stringify({ merge_variables: v }).length).toBeLessThan(4096);
   });
 });
-
 
 describe('a third provider', () => {
   it('rides the same contract with no id the worker knows', () => {
@@ -333,7 +380,7 @@ describe('truthful cached readings', () => {
     expect(status.providers.claude.stale).toBe(true);
     expect(status.providers.codex.stale).toBe(false);
     expect(status.history[0]['claude.session']).toBeUndefined();
-    expect(buildMergeVariables(status, NOW).claude_state).toBe('stale');
+    expect((buildMergeVariables(status, NOW).claude_windows as MergeWindow[])[0].state).toBe('stale');
   });
   it('never converts malformed percentages into available capacity', () => {
     const snap = snapshot();
