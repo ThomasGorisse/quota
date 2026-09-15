@@ -48,6 +48,22 @@ async function handle(request: Request, env: Env): Promise<Response> {
 
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
+  // One-prompt install: an agent fetches this and executes it. It is the versioned
+  // web/install.md, served as markdown under both names so either URL can be pasted.
+  if (path === '/install' || path === '/install.md') {
+    if (request.method !== 'GET' && request.method !== 'HEAD') return json({ error: 'not found' }, 404);
+    const asset = await env.ASSETS?.fetch(new URL('/install.md', url));
+    if (!asset?.ok) return json({ error: 'not found' }, 404);
+    return new Response(request.method === 'HEAD' ? null : asset.body, {
+      status: 200,
+      headers: {
+        'content-type': 'text/markdown; charset=utf-8',
+        'cache-control': 'public, max-age=300',
+        ...CORS,
+      },
+    });
+  }
+
   if (!path.startsWith('/v1/')) {
     // Static assets are served ahead of the Worker; this is the fallback.
     return new Response('Quota', { status: 200, headers: { 'content-type': 'text/plain' } });

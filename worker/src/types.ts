@@ -39,4 +39,6 @@ export type Severity = 'ok' | 'warn' | 'critical';
 
 export interface Env {
   QUOTA: KVNamespace;
+  /** web/, so GET /install can serve the versioned install.md. */
+  ASSETS: Fetcher;
 }

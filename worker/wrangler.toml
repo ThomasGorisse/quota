@@ -11,6 +11,9 @@ id = "8b1f0c543af6446da000967297c2e607"
 [assets]
 directory = "../web"
 binding = "ASSETS"
+# /install must answer as markdown even though /install.md is also a static file: let the
+# Worker see both and set the content type itself.
+run_worker_first = ["/install", "/install.md"]
 
 [triggers]
 crons = ["*/5 * * * *"]
