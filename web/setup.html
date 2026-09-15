@@ -1,10 +1,134 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="dark light"><meta name="referrer" content="no-referrer"><title>Set up Quota</title><meta name="description" content="Connect your AI usage to Quota on your phone, desktop and desk display."><link rel="stylesheet" href="./style.css"><style>.guide{width:min(100%,720px);margin:48px auto}.guide h2{font-size:36px;font-weight:500;letter-spacing:-.05em;line-height:1.15}.guide h3{margin-top:36px}.guide p,.guide li{color:var(--muted);font-size:15px}.guide li{margin:12px 0}.guide pre{padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:auto;font-size:13px}.guide .download{display:inline-block;background:var(--ok);color:var(--bg);padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600}.guide footer{margin-top:48px;border-top:1px solid var(--border);padding-top:24px;font-size:13px}</style></head>
-<body><div class="app"><header class="topbar"><a class="brand" href="./" style="text-decoration:none"><span class="brand-mark" aria-hidden="true"></span><h1>Quota</h1></a><a href="./privacy.html">Privacy</a></header><main class="guide"><span class="eyebrow">GET CONNECTED</span><h2>Your limits.<br>On the screens you use.</h2><p>Quota reads the AI accounts you already use on your Mac. A small collector keeps your other screens up to date.</p>
-<h3>1. Connect your AI tools</h3><p>On your Mac, sign in to Claude Code, Codex or Gemini CLI. Quota only shows providers it can read. You do not need all three.</p><p>You’ll need macOS and Python 3. Check Python in Terminal with <code>python3 --version</code>.</p>
-<h3>2. Install the collector</h3><p><a class="download" href="./downloads/quota-collector.zip" download>Download the Mac collector ↓</a></p><p>Unzip the download, open Terminal in the folder containing the extracted <code>collector</code> folder, then run:</p><pre><code>bash collector/install.sh</code></pre><p>The installer adds a background task that refreshes every three minutes. macOS may ask you to allow access to Claude Code’s credentials in Keychain.</p>
-<h3>3. Pair your screens</h3><p>Open the pairing link printed by the installer, or find it in <code>~/.quota/pairing.txt</code>. On another device, paste the complete link into Quota. Keep this link private: anyone with it can read your limits.</p>
-<ul><li><strong>Phone or tablet:</strong> open Quota in a compatible browser, or paste the link into the Quota app.</li><li><strong>Second monitor or an older Android device:</strong> open the same link in a modern browser. Use “Full screen” and “Keep awake” where the browser supports them. Leave the device connected to power for a permanent desk display.</li><li><strong>TRMNL OG:</strong> create a private Webhook plugin and paste the <a href="./downloads/quota.liquid" download>Quota template</a> into its Full view. Physical device delivery still needs to be verified on your display.</li><li><strong>Echo Show:</strong> the dashboard may work in Silk; it has not been verified on the physical device.</li><li><strong>Nest Hub:</strong> it has no general-purpose browser. Casting is not implemented, so Quota does not currently support this display.</li></ul>
-<h3>Pause or remove the collector</h3><p>Keep the extracted folder in a permanent location before installing: the background task runs the collector from there. To stop collection, run this from the same parent folder:</p><pre><code>bash collector/install.sh --uninstall</code></pre><p>Your local pairing settings stay in <code>~/.quota</code> so you can reconnect later. Disconnecting the phone only removes that phone’s pairing; it does not stop the Mac collector.</p><h3>If a reading stops updating</h3><p>Wake your Mac and check that the corresponding AI tool is still signed in. Quota keeps the last reading and marks it out of date after ten minutes. Providers that are not connected, including Gemini, are not shown.</p><h3>What leaves your Mac?</h3><p>Quota sends usage percentages, reset times, provider and plan labels, and a random pairing token to its Cloudflare relay. Provider credentials are used only to contact the corresponding provider; they are never sent to the relay. Read the <a href="./privacy.html">privacy policy</a> for storage and retention details.</p>
-<footer>Need a hand? <a href="mailto:thomas.gorisse@gmail.com">thomas.gorisse@gmail.com</a> · <a href="./">Open Quota →</a></footer></main></div></body></html>
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="dark light"><meta name="referrer" content="no-referrer">
+<title>Set up Quota</title>
+<meta name="description" content="Install Quota with one prompt in Claude Code, Codex CLI or Gemini CLI.">
+<link rel="stylesheet" href="./style.css">
+<style>
+.guide{width:min(100%,720px);margin:48px auto}
+.guide h2{font-size:clamp(34px,5vw,44px);font-weight:500;letter-spacing:-.05em;line-height:1.12;margin:16px 0}
+.guide h3{margin-top:40px;font-size:19px;font-weight:600;letter-spacing:-.03em}
+.guide p,.guide li{color:var(--muted);font-size:15px}
+.guide li{margin:10px 0}
+.guide code{font-size:13px}
+.guide pre{padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:auto;font-size:13px}
+.prompt-card{margin:28px 0 8px;padding:22px;background:var(--surface);border:1px solid var(--border);border-radius:20px}
+.prompt-card label{display:block;font-size:12px;font-weight:600;color:var(--text);margin-bottom:12px}
+.prompt-row{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+.prompt-row code{flex:1;min-width:min(100%,260px);padding:14px 16px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);line-height:1.5;overflow-wrap:anywhere}
+#copy-prompt{flex:0 0 auto;min-height:48px;padding:0 20px;border:0;border-radius:12px;background:var(--ok);color:var(--bg);font-size:14px;font-weight:600;cursor:pointer}
+#copy-prompt[data-done="true"]{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.agents{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 0}
+.agents span{font-size:12px;border:1px solid var(--border);border-radius:8px;padding:5px 12px;color:var(--muted)}
+.steps{list-style:none;padding:0;counter-reset:step}
+.steps li{position:relative;padding-left:34px;counter-increment:step}
+.steps li::before{content:counter(step);position:absolute;left:0;top:-1px;width:22px;height:22px;border:1px solid var(--border);border-radius:50%;display:grid;place-items:center;font-size:11px;color:var(--text)}
+details{margin-top:12px;border:1px solid var(--border);border-radius:16px;background:var(--surface);padding:6px 20px}
+details[open]{padding-bottom:18px}
+summary{cursor:pointer;padding:14px 0;font-size:15px;font-weight:600;color:var(--text)}
+.download{display:inline-block;background:transparent;border:1px solid var(--border);color:var(--text);padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px}
+@media (max-width:600px){
+  .guide{margin:32px auto}
+  .prompt-card{padding:18px;border-radius:16px}
+  .prompt-row{flex-direction:column}
+  .prompt-row code{min-width:0;width:100%}
+  #copy-prompt{width:100%}
+  details{padding:4px 16px}
+}
+.guide footer{margin-top:48px;border-top:1px solid var(--border);padding-top:24px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <a class="brand" href="./" style="text-decoration:none"><span class="brand-mark" aria-hidden="true"></span><h1>Quota</h1></a>
+    <a href="./privacy.html">Privacy</a>
+  </header>
+
+  <main class="guide">
+    <span class="eyebrow">GET CONNECTED</span>
+    <h2>One prompt.<br>Then every screen knows.</h2>
+    <p>Quota reads the AI accounts you are already signed in to on your Mac — Claude, Codex, Gemini — and keeps your phone, desk display and browser up to date. Your coding agent installs it for you.</p>
+
+    <div class="prompt-card">
+      <label id="prompt-label" for="copy-prompt">Paste this into your coding agent, on the Mac you work on</label>
+      <div class="prompt-row">
+        <code id="prompt-text">Read https://quota.sceneview.dev/install (curl it if you have no web access) and follow it to install Quota on this Mac.</code>
+        <button type="button" id="copy-prompt" aria-describedby="prompt-label">Copy</button>
+      </div>
+      <div class="agents"><span>Claude Code</span><span>Codex CLI</span><span>Gemini CLI</span></div>
+    </div>
+    <p id="copy-status" role="status" style="font-size:12px;min-height:18px;margin:10px 2px 0"></p>
+
+    <h3>What your agent will do</h3>
+    <ol class="steps">
+      <li>Check that this is a Mac with Python 3, and download the collector into <code>~/.quota/collector</code> — a permanent home, not your Downloads folder.</li>
+      <li>Ask your permission before the single step that touches anything outside <code>~/.quota</code>: a background task that refreshes every three minutes. macOS may ask you to allow access to Claude Code’s credentials in Keychain — click Allow.</li>
+      <li>Show you your pairing link. It carries your device token, so treat it like a password.</li>
+      <li>Offer to set up a TRMNL e-ink display, if you have one. That part is optional and needs a TRMNL Developer licence.</li>
+    </ol>
+    <p>Nothing needs <code>sudo</code>, and the procedure it reads is <a href="./install.md">public and versioned</a> — read it first if you like.</p>
+
+    <h3>Pair your screens</h3>
+    <p>Open <a href="./">the dashboard</a> on the Mac with your pairing link, then use <strong>Pair another screen</strong>: it draws a QR code you scan with your phone. The code is generated inside the page — your link never reaches a QR service.</p>
+    <ul>
+      <li><strong>Phone or tablet:</strong> scan the QR, or paste the link into the Quota app.</li>
+      <li><strong>Second monitor or an old Android tablet:</strong> open the link in a modern browser and turn on “Full screen” and “Keep awake”. Leave it on power for a permanent desk display.</li>
+      <li><strong>TRMNL OG:</strong> your agent provisions the private plugin for you in the optional step — you only paste the plugin’s webhook URL back once.</li>
+      <li><strong>Echo Show:</strong> the dashboard may work in Silk; not verified on the device. <strong>Nest Hub</strong> has no general-purpose browser, so Quota does not support it.</li>
+    </ul>
+
+    <h3>Manual install</h3>
+    <p>No coding agent, or you would rather do it yourself:</p>
+    <details>
+      <summary>Install the collector by hand</summary>
+      <p><a class="download" href="./downloads/quota-collector.zip" download>Download the Mac collector ↓</a></p>
+      <p>Unzip it somewhere permanent — the background task runs it from wherever you leave it — then, from the folder containing the extracted <code>collector</code> folder:</p>
+      <pre><code>bash collector/install.sh</code></pre>
+      <p>The installer prints your pairing link and writes it to <code>~/.quota/pairing.txt</code>. Paste the complete link into Quota on another device.</p>
+      <p>For a TRMNL display, create a private Webhook plugin, paste the <a href="./downloads/quota.liquid" download>Quota template</a> into its Full view, and give the plugin’s webhook URL to the dashboard’s “Connect TRMNL” panel.</p>
+    </details>
+    <details>
+      <summary>Pause or remove the collector</summary>
+      <pre><code>bash ~/.quota/collector/install.sh --uninstall</code></pre>
+      <p>Your settings stay in <code>~/.quota</code>, so you can reconnect later. Unpairing a phone only removes that phone; it does not stop the Mac collector.</p>
+    </details>
+    <details>
+      <summary>A reading stopped updating</summary>
+      <p>Wake your Mac and check that the AI tool is still signed in. Quota keeps the last reading and marks it out of date after ten minutes. Providers that are not connected are simply not shown — you do not need all three.</p>
+    </details>
+
+    <h3>What leaves your Mac?</h3>
+    <p>Usage percentages, reset times, provider and plan labels, and a random pairing token, sent to Quota’s Cloudflare relay. Provider credentials are only ever used to contact the provider they belong to; they never reach the relay. Details in the <a href="./privacy.html">privacy policy</a>.</p>
+
+    <footer>Need a hand? <a href="mailto:thomas.gorisse@gmail.com">thomas.gorisse@gmail.com</a> · <a href="./">Open Quota →</a></footer>
+  </main>
+</div>
+<script>
+  (() => {
+    'use strict';
+    const button = document.getElementById('copy-prompt');
+    const status = document.getElementById('copy-status');
+    button.addEventListener('click', async () => {
+      const text = document.getElementById('prompt-text').textContent.trim();
+      try {
+        await navigator.clipboard.writeText(text);
+        button.textContent = 'Copied';
+        button.dataset.done = 'true';
+        status.textContent = 'Copied. Paste it into Claude Code, Codex CLI or Gemini CLI on your Mac.';
+        setTimeout(() => { button.textContent = 'Copy'; delete button.dataset.done; }, 4000);
+      } catch {
+        // Clipboard access can be refused; selecting the text is still a one-gesture copy.
+        const range = document.createRange();
+        range.selectNodeContents(document.getElementById('prompt-text'));
+        const selection = getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        status.textContent = 'Your browser blocked the clipboard — the prompt is selected, press ⌘C.';
+      }
+    });
+  })();
+</script>
+</body>
+</html>

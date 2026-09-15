@@ -11,6 +11,7 @@
   <title>Quota — your AI usage at a glance</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%2322C55E' stroke-width='5' stroke-dasharray='52 18' transform='rotate(-90 16 16)'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="./style.css">
+  <script src="./qr.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
 <body>
@@ -50,7 +51,15 @@
       <div class="dashboard-heading"><div><span class="eyebrow">AT A GLANCE</span><h2>Your capacity.</h2><p>One clear answer: how much room do you have left?</p></div><span class="heading-note">Updated automatically</span></div>
       <div class="notice" id="notice" role="status" hidden></div>
       <div class="providers" id="providers"></div>
-      <footer class="footer"><span id="footer-note">Every number is what’s <strong>left.</strong></span><div class="footer-actions"><button id="history-toggle" type="button" aria-pressed="false">History</button><span id="refresh-note">Refreshes every minute</span><button id="wake-toggle" type="button" aria-pressed="false" hidden>Keep awake</button><button id="fullscreen-toggle" type="button" hidden>Full screen</button><button id="trmnl-toggle" type="button" aria-expanded="false" aria-controls="trmnl-panel">Connect TRMNL</button><a href="./setup.html">Setup</a><a href="./privacy.html">Privacy</a></div></footer><p id="screen-notice" class="help" role="status" hidden></p>
+      <footer class="footer"><span id="footer-note">Every number is what’s <strong>left.</strong></span><div class="footer-actions"><button id="history-toggle" type="button" aria-pressed="false">History</button><span id="refresh-note">Refreshes every minute</span><button id="wake-toggle" type="button" aria-pressed="false" hidden>Keep awake</button><button id="fullscreen-toggle" type="button" hidden>Full screen</button><button id="pair-toggle" type="button" aria-expanded="false" aria-controls="pair-panel">Pair another screen</button><button id="trmnl-toggle" type="button" aria-expanded="false" aria-controls="trmnl-panel">Connect TRMNL</button><a href="./setup.html">Setup</a><a href="./privacy.html">Privacy</a></div></footer><p id="screen-notice" class="help" role="status" hidden></p>
+      <section id="pair-panel" class="integration-panel" aria-labelledby="pair-title" hidden>
+        <div class="integration-heading"><div><span class="eyebrow">ANOTHER SCREEN</span><h2 id="pair-title">Pair another screen.</h2></div><button id="pair-close" type="button" aria-label="Close pairing code">×</button></div>
+        <p>Scan this with the phone, tablet or display you want to add. The code is drawn inside this page: your pairing link never reaches a QR service.</p>
+        <div class="qr" id="qr" role="img" aria-label="QR code containing your pairing link"></div>
+        <p id="pair-message" role="status"></p>
+        <div class="integration-actions"><button id="pair-copy" type="button">Copy the link instead</button></div>
+      </section>
+
       <section id="trmnl-panel" class="integration-panel" aria-labelledby="trmnl-title" hidden>
         <div class="integration-heading"><div><span class="eyebrow">ON YOUR DESK</span><h2 id="trmnl-title">Connect your TRMNL.</h2></div><button id="trmnl-close" type="button" aria-label="Close TRMNL settings">×</button></div>
         <p>Create a private Webhook plugin in TRMNL, paste the <a href="./downloads/quota.liquid" download>Quota template</a> into its Full view, then copy its webhook URL below.</p>

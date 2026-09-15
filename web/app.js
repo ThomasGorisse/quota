@@ -439,6 +439,51 @@
     try { localStorage.setItem('quota.history', String(showHistory)); } catch { /* Still works for this visit. */ }
     render();
   });
+  // Pairing another screen: the link carries the token, so the QR is drawn here, in the page.
+  // Sending it to a QR service would be handing out the credential.
+  function pairingUrl() {
+    return `${location.origin}${location.pathname}#${new URLSearchParams({ t: token })}`;
+  }
+  function paintQr() {
+    const target = $('#qr');
+    const message = $('#pair-message');
+    if (demo || !token) {
+      target.replaceChildren();
+      message.textContent = 'Pair this screen with your collector first — then you can pass it on.';
+      return;
+    }
+    try {
+      // Level M survives a phone camera at an angle; the URL is short enough for a small code.
+      target.innerHTML = QuotaQR.svg(pairingUrl(), { ecc: 'M' });
+      message.textContent = 'Anyone who scans this can read your limits. Only show it to a screen you own.';
+    } catch {
+      target.replaceChildren();
+      message.textContent = 'This browser could not draw the code. Use “Copy the link instead”.';
+    }
+  }
+  $('#pair-toggle').addEventListener('click', () => {
+    const panel = $('#pair-panel');
+    panel.hidden = !panel.hidden;
+    $('#pair-toggle').setAttribute('aria-expanded', String(!panel.hidden));
+    if (!panel.hidden) paintQr();
+    else $('#qr').replaceChildren();
+  });
+  $('#pair-close').addEventListener('click', () => {
+    $('#pair-panel').hidden = true;
+    $('#qr').replaceChildren();
+    $('#pair-toggle').setAttribute('aria-expanded', 'false');
+    $('#pair-toggle').focus();
+  });
+  $('#pair-copy').addEventListener('click', async () => {
+    if (demo || !token) return;
+    try {
+      await navigator.clipboard.writeText(pairingUrl());
+      $('#pair-message').textContent = 'Link copied. Paste it into the other screen, then clear your clipboard.';
+    } catch {
+      $('#pair-message').textContent = 'Your browser blocked the clipboard. Open ~/.quota/pairing.txt on your Mac instead.';
+    }
+  });
+
   let trmnlBusy = false;
   function trmnlMessage(message) {
     $('#trmnl-message').textContent = message;
