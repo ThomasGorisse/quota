@@ -78,11 +78,16 @@ safe here because both sources carry the same value: falling through never chang
                   <span style="font-size: {{ label_size }}px; font-weight: 600; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere;">{{ w.label | escape }}</span>
                   <span style="font-size: {{ value_size }}px; font-weight: 700; flex: 0 0 auto; white-space: nowrap;">{{ w.value }}% {{ word | escape }}</span>
                 </div>
-                <div role="img" aria-label="{{ w.label | escape }} {{ w.value }} percent {{ word | escape }}; {{ w.state_label | escape }}"
-                     style="height: {{ bar_height }}px; margin-top: 3px; background: {{ paper }};
-                     {% if w.state == 'stale' %}border: 2px dashed {{ ink }};{% else %}border: 2px solid {{ ink }};{% endif %}">
-                  {% unless w.state == 'stale' %}<div style="height: 100%; width: {{ w.value }}%; background: {{ ink }};"></div>{% endunless %}
-                </div>
+                {%- comment -%}
+                SVG rectangles rather than CSS backgrounds: the device pipeline keeps vector
+                fills where a background-color can be dropped, and a 1-bit screen has no
+                grey to lose here. The stroke is drawn at 4px so 2px survive the edge clip.
+                {%- endcomment -%}
+                <svg role="img" aria-label="{{ w.label | escape }} {{ w.value }} percent {{ word | escape }}; {{ w.state_label | escape }}"
+                     width="100%" height="{{ bar_height }}" style="display: block; margin-top: 3px;">
+                  <rect x="0" y="0" width="100%" height="100%" fill="{{ paper }}" stroke="{{ ink }}" stroke-width="4"{% if w.state == 'stale' %} stroke-dasharray="8 5"{% endif %}/>
+                  {% unless w.state == 'stale' %}<rect x="0" y="0" width="{{ w.value }}%" height="100%" fill="{{ ink }}"/>{% endunless %}
+                </svg>
                 <div style="font-size: {{ reset_size }}px; margin-top: 2px;">{% if w.state == 'stale' %}{{ w.state_label | escape }} &middot; {% endif %}{{ w.reset | escape }}</div>
               </div>
             {% endfor %}
