@@ -22,9 +22,11 @@
 #   - The markup linter rejects a hand-written `view view--full` wrapper.
 #   - Screenshots take no device_model: og and og_png are refused. Jobs expire in seconds.
 #   - No endpoint exposes the plugin UUID — not the list, not /details, not /archive — and
-#     POST playlist_items wants the UUID, not the integer id. So the one manual step left is
-#     the human pasting the webhook URL once; --webhook-url takes it, ~/.quota/trmnl-webhook
-#     remembers it. Everything else is automatic.
+#     the webhook URL is built on it. So the one manual step left is the human pasting that
+#     URL once; --webhook-url takes it, ~/.quota/trmnl-webhook remembers it. Everything else
+#     is automatic.
+#   - POST playlist_items wanted the UUID on 2026-09-15 and the integer id on 2026-09-22
+#     (the UUID then answered "Plugin setting not found"), so step 7 tries both.
 # Run --dry-run first; it prints the whole sequence and sends nothing.
 set -euo pipefail
 
@@ -232,8 +234,8 @@ if [[ -z "$WEBHOOK_URL" ]] && (( DRY_RUN )); then
 fi
 if [[ -z "$WEBHOOK_URL" ]]; then
   # The UUID that forms the webhook URL is not exposed by any Account API endpoint (checked
-  # 2026-09-15: neither the list, nor /details, nor /archive returns it), and the playlist
-  # endpoint needs it. This is the single step a human still has to do by hand.
+  # 2026-09-15: neither the list, nor /details, nor /archive returns it), and the relay
+  # needs the whole URL. This is the single step a human still has to do by hand.
   say ""
   say "   TRMNL does not expose the plugin's UUID over the API, so copy it once:"
   say "     1. Open $API/plugin_settings/$PLUGIN_SETTING_ID/edit"
@@ -263,9 +265,14 @@ def ident(item):
 sys.exit(0 if any(ident(i) & want for i in items) else 1)'; then
   say "   Already on the playlist."
 else
-  # The integer id answers "Plugin setting not found" here: this endpoint wants the UUID.
+  # The integer id first, the UUID second: TRMNL has accepted each one and refused the other
+  # a week apart, answering "Plugin setting not found" to the wrong one.
   api POST "/api/devices/$DEVICE_ID/playlist_items" \
-    "$(PID="$PLUGIN_UUID" python3 -c 'import json,os;print(json.dumps({"plugin_setting_id":os.environ["PID"]}))')"
+    "$(PID="$PLUGIN_SETTING_ID" python3 -c 'import json,os;print(json.dumps({"plugin_setting_id":int(os.environ["PID"])}))')"
+  if [[ "$STATUS" != 2* ]]; then
+    api POST "/api/devices/$DEVICE_ID/playlist_items" \
+      "$(PID="$PLUGIN_UUID" python3 -c 'import json,os;print(json.dumps({"plugin_setting_id":os.environ["PID"]}))')"
+  fi
   expect_ok "POST .../playlist_items"
   say "   Added."
 fi

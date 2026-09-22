@@ -18,11 +18,27 @@ plugin to the device playlist, registers the webhook URL with the relay using th
 token from `~/.quota/config.json`, and renders a preview to `~/.quota/trmnl-preview.png`.
 
 One step stays manual, and it is TRMNL's fault, not ours: **no endpoint exposes a private
-plugin's UUID** — not the list, not `/details`, not `/archive` — and `POST
-/api/devices/{id}/playlist_items` accepts only that UUID (the integer id answers *Plugin
-setting not found*). So the script stops once, tells you to copy the Webhook URL from
+plugin's UUID** — not the list, not `/details`, not `/archive` — and the webhook URL is
+built on it. So the script stops once, tells you to copy the Webhook URL from
 `https://trmnl.com/plugin_settings/<id>/edit`, and you re-run it with
 `--webhook-url <url>`. It remembers the URL in `~/.quota/trmnl-webhook` afterwards.
+`POST /api/devices/{id}/playlist_items` took only the UUID on 2026-09-15 and only the
+integer id on 2026-09-22, so the script tries the id, then the UUID.
+
+## Two accounts, two screens
+
+Each Mac's collector feeds its own device token, and each token pushes to one webhook. For
+a personal and a work account on the same display, run the script once per Mac with its
+own name — `--name "Quota Perso"` on one, `--name "Quota Pro"` on the other. Both plugins
+carry the same markup; it reads the account from the plugin's name, drops the leading
+`Quota` and prints the rest in capitals in a black band across the top (`PERSO`, `PRO`)
+and in the title bar. A plugin named plain `Quota` gets no band. Nothing changes in the
+relay.
+
+A webhook plugin that has never received data renders TRMNL's placeholder, not this
+template, and TRMNL only renders when the device next checks in (every 5 minutes by
+default). The template's own waiting screen, with the band, shows for a payload older than
+`layout_version` 3.
 
 Verified against the live API on 2026-09-15: private plugins are `plugin_id` 37 (override
 with `--plugin-id`); the markup linter **rejects a hand-written `view view--full` wrapper**,
