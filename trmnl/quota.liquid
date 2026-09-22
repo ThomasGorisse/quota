@@ -28,13 +28,13 @@ payload arrives. A plugin named plain "Quota" gets no banner.
 <div class="layout" style="flex-direction: column; align-items: stretch; justify-content: flex-start; padding: 10px 14px 0 14px; background: white; color: black; font-family: Arial, Helvetica, sans-serif;">
   {% if account != blank %}
   {%- comment -%}
-  An SVG, like the bars: a CSS background can be dropped on the way to the screen, and
-  white type on a lost background would leave the one word that matters invisible.
+  An SVG outline, like the bars: a CSS border can be dropped on the way to the screen. Black
+  type on white, not a filled band: a solid black band outweighed the numbers it labels.
   {%- endcomment -%}
   <svg role="img" aria-label="{{ account | escape }} account" width="100%" height="40" style="display: block; flex: 0 0 auto; margin-bottom: 10px;">
-    <rect x="0" y="0" width="100%" height="100%" fill="black"/>
-    <text x="14" y="31" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" letter-spacing="3">{{ account | escape }}</text>
-    <text x="100%" dx="-14" y="27" text-anchor="end" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="2">QUOTA</text>
+    <rect x="0" y="0" width="100%" height="100%" fill="white" stroke="black" stroke-width="4"/>
+    <text x="14" y="30" fill="black" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" letter-spacing="3">{{ account | escape }}</text>
+    <text x="100%" dx="-14" y="26" text-anchor="end" fill="black" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="2">QUOTA</text>
   </svg>
   {% endif %}
   {% if version == 3 %}
