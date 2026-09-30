@@ -14,7 +14,7 @@ struct RingGauge: View {
     var mode: DisplayMode = .remaining
     var diameter: CGFloat = 128
     var stroke: CGFloat = QuotaTheme.ringStrokePhone
-    /// The "% left" / "% used" caption. Off on the widgets, where there is no room.
+    /// The mode caption. All standard glance layouts keep it visible.
     var showsCaption: Bool = true
     /// The number, as a fraction of the diameter. Raised on the widgets, where the ring is the
     /// only thing worth reading and the number has to survive a 5 cm tile.
@@ -38,7 +38,6 @@ struct RingGauge: View {
                 // Start at twelve o'clock and fill clockwise.
                 .rotationEffect(.degrees(-90))
                 .animation(animates ? QuotaTheme.ringAnimation : nil, value: fraction)
-                .animation(animates ? QuotaTheme.ringAnimation : nil, value: severity)
 
             centre
                 // Keeps the number inside the ring at every Dynamic Type size.
@@ -51,7 +50,7 @@ struct RingGauge: View {
 
     private var centre: some View {
         VStack(spacing: 0) {
-            Text("\(value)")
+            Text("\(value)%")
                 .font(.system(size: diameter * valueScale, weight: valueWeight))
                 .monospacedDigit()
                 .foregroundStyle(palette.textPrimary)
@@ -77,7 +76,7 @@ struct RingGauge: View {
 struct WindowGauge: View {
     let window: Window
     var mode: DisplayMode = .remaining
-    /// Grey and captionless when the snapshot is stale, whatever the numbers say.
+    /// Grey when the snapshot is stale; the number retains its unit and mode.
     var stale: Bool = false
     var diameter: CGFloat = 128
     var stroke: CGFloat = QuotaTheme.ringStrokePhone
@@ -98,17 +97,17 @@ struct WindowGauge: View {
                 mode: mode,
                 diameter: diameter,
                 stroke: stroke,
-                showsCaption: !compact,
+                showsCaption: true,
                 valueScale: valueScale,
                 valueWeight: valueWeight
             )
-            Text(window.label)
+            Text(window.displayLabel)
                 .font(.system(size: labelSize ?? (compact ? 12 : 15), weight: .semibold))
                 .foregroundStyle(palette.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
-            if let left = window.resetsIn(now: now) {
-                Text(compact ? QuotaFormat.countdownShort(left) : "resets in \(QuotaFormat.countdown(left))")
+            if let reset = QuotaFormat.resetLine(window, now: now) {
+                Text(reset)
                     .font(.system(size: labelSize.map { $0 - 2 } ?? (compact ? 11 : 13)))
                     .monospacedDigit()
                     .foregroundStyle(palette.textSecondary)
@@ -121,7 +120,7 @@ struct WindowGauge: View {
     }
 
     private var accessibilityLabel: String {
-        var parts = ["\(window.label): \(window.value(mode)) percent \(mode == .used ? "used" : "left")"]
+        var parts = ["\(window.displayLabel): \(window.value(mode)) percent \(mode == .used ? "used" : "left")"]
         if stale { parts.append("stale") }
         if let left = window.resetsIn(now: now) { parts.append("resets in \(QuotaFormat.countdown(left))") }
         return parts.joined(separator: ", ")

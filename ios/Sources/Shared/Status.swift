@@ -63,40 +63,15 @@ struct ProviderStatus: Codable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey { case plan, windows }
 
-    /// The windows worth showing where there is only room for a few — the medium widget.
-    ///
-    /// A provider reports one, two or three windows and this version must not assume which:
-    /// Claude sends `session` + `weekly`, Codex Plus adds `reserve`, and Codex Pro currently
-    /// sends only `weekly` + `reserve`. So the pick is by role — the rolling window first,
-    /// then the weekly one, then whatever else is declared — and from two slots on the busiest
-    /// window is always kept even when its role ranks last, because a red ring must never be
-    /// the one hidden.
+    /// Highest used percentage first. Stable ties retain the backend's declared order.
     func primaryWindows(limit: Int = 2) -> [Window] {
-        guard windows.count > limit else { return windows }
-        let ranked = windows.enumerated().sorted { a, b in
-            let (ra, rb) = (Self.rank(a.element), Self.rank(b.element))
-            return ra == rb ? a.offset < b.offset : ra < rb
-        }
-        var kept = Array(ranked.prefix(limit))
-        // With a single slot the role wins: a surface showing one ring per provider always
-        // shows the same window, or the reading changes shape under the user. From two slots
-        // on there is room to guarantee the busiest window is one of them.
-        if limit > 1,
-           let busiest = ranked.max(by: { $0.element.percent < $1.element.percent }),
-           !kept.contains(where: { $0.offset == busiest.offset }) {
-            kept[kept.count - 1] = busiest
-        }
-        return kept.sorted { $0.offset < $1.offset }.map(\.element)
+        Array(windows.enumerated().filter { (0...100).contains($0.element.percent) }
+            .sorted { a, b in
+                a.element.percent == b.element.percent
+                    ? a.offset < b.offset : a.element.percent > b.element.percent
+            }.prefix(max(0, limit)).map(\.element))
     }
 
-    private static func rank(_ window: Window) -> Int {
-        switch window.id {
-        case "session": return 0
-        case "weekly": return 1
-        case "reserve": return 2
-        default: return 3
-        }
-    }
 }
 
 struct Window: Codable, Equatable, Identifiable, Sendable {
@@ -105,6 +80,8 @@ struct Window: Codable, Equatable, Identifiable, Sendable {
     /// Percentage **used**, as sent by the collector.
     var percent: Int
     var resetsAt: String?
+
+    var displayLabel: String { label.isEmpty ? id : label }
 
     enum CodingKeys: String, CodingKey {
         case id, label, percent
@@ -147,10 +124,10 @@ enum Severity: String, Sendable, CaseIterable {
 
     var label: String {
         switch self {
-        case .ok: return "OK"
-        case .warn: return "Warn"
-        case .critical: return "Critical"
-        case .stale: return "Stale"
+        case .ok: return "Ready"
+        case .warn: return "Running low"
+        case .critical: return "Nearly empty"
+        case .stale: return "Out of date"
         }
     }
 }
@@ -163,7 +140,7 @@ enum DisplayMode: String, Sendable, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     /// The word under the big number.
-    var caption: String { self == .used ? "% used" : "% left" }
+    var caption: String { self == .used ? "used" : "left" }
 
     /// The label of the segmented control in Settings.
     var title: String { self == .used ? "Used" : "Left" }
@@ -229,19 +206,21 @@ struct Snapshot: Codable, Equatable, Sendable {
     /// The ring a glanceable surface should show when it only has room for one:
     /// the window with the least left.
     func mostCritical() -> (provider: String, window: Window)? {
-        orderedProviders()
-            .flatMap { entry in entry.provider.windows.map { (entry.name, $0) } }
-            .min { $0.1.remaining < $1.1.remaining }
-            .map { (provider: $0.0, window: $0.1) }
+        var result: (provider: String, window: Window)?
+        for entry in orderedProviders() {
+            if let window = entry.provider.primaryWindows(limit: 1).first,
+               window.percent > (result?.window.percent ?? -1) {
+                result = (entry.name, window)
+            }
+        }
+        return result
     }
 
     func window(_ provider: ProviderId, _ id: String) -> Window? {
         status.providers[provider.rawValue]?.windows.first { $0.id == id }
     }
 
-    /// The one window to show for a provider on a surface with room for a single ring: the
-    /// rolling 5 h one when the provider reports it, and otherwise whatever it ranks first —
-    /// Codex Pro, for instance, currently reports only Week and Reserve.
+    /// The most-used reported window, regardless of its id or display mode.
     func headlineWindow(_ provider: ProviderId) -> Window? {
         status.providers[provider.rawValue]?.primaryWindows(limit: 1).first
     }
