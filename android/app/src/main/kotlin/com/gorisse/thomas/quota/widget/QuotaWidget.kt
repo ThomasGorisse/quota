@@ -109,7 +109,7 @@ private fun SmallContent(snapshot: Snapshot, mode: DisplayMode, demo: Boolean = 
         return
     }
     val (name, window) = hero
-    val stale = snapshot.isStale() || snapshot.orderedProviders().firstOrNull { it.first == hero?.first }?.second?.isStaleAt() == true
+    val stale = snapshot.isStale() || snapshot.orderedProviders().firstOrNull { it.first == name }?.second?.isStaleAt() == true
     val size = LocalSize.current
     val diameter = minOf(size.height.value - 8, size.width.value * .36f).toInt().coerceIn(24, 64)
     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
@@ -117,7 +117,7 @@ private fun SmallContent(snapshot: Snapshot, mode: DisplayMode, demo: Boolean = 
             MiniRing(window, stale, diameter, mode)
         } else {
             Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
-                Text("${window.shown(mode)}%", style = TextStyle(color = primaryText(),
+                Text("${window.shown(mode)}%", style = TextStyle(color = if (stale) staleText() else primaryText(),
                     fontSize = 22.sp, fontWeight = FontWeight.Medium), maxLines = 1)
                 Text(if (mode.isUsed) "used" else "left", style = TextStyle(color = secondaryText(),
                     fontSize = 10.sp), maxLines = 1)
@@ -128,7 +128,7 @@ private fun SmallContent(snapshot: Snapshot, mode: DisplayMode, demo: Boolean = 
             Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
                 ProviderMark(ProviderId.of(name.lowercase()), sizeDp = 10, stale = stale)
                 Spacer(GlanceModifier.size(4.dp))
-                Text("$name · ${window.label.ifEmpty { window.id }}",
+                Text("$name · ${window.glanceLabel()}",
                     style = TextStyle(color = primaryText(), fontSize = 11.sp,
                         fontWeight = FontWeight.Medium), maxLines = 1)
             }
@@ -161,33 +161,35 @@ private fun LargeContent(snapshot: Snapshot, mode: DisplayMode, demo: Boolean = 
         }
         Spacer(GlanceModifier.size(8.dp))
         Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
-            Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
-                MiniRing(window, stale, diameter, mode)
-                Spacer(GlanceModifier.size(4.dp))
-                Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
-                    ProviderMark(ProviderId.of(name.lowercase()), sizeDp = 10, stale = stale)
-                    Spacer(GlanceModifier.size(4.dp))
-                    Text("$name · ${window.label.ifEmpty { window.id }}",
-                        style = TextStyle(color = primaryText(), fontSize = 10.sp), maxLines = 1)
-                }
-            }
+            MiniRing(window, stale, diameter, mode)
             Spacer(GlanceModifier.size(12.dp))
             Column(GlanceModifier.defaultWeight()) {
-                Text(providerSubtitle(name, snapshot.orderedProviders().firstOrNull { it.first == name }?.second?.plan),
-                    style = TextStyle(color = secondaryText(), fontSize = 10.sp), maxLines = 1)
+                Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
+                    ProviderMark(ProviderId.of(name.lowercase()), sizeDp = 12, stale = stale)
+                    Spacer(GlanceModifier.size(4.dp))
+                    Text("$name · ${window.glanceLabel()}",
+                        style = TextStyle(color = primaryText(), fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium), maxLines = 1)
+                }
                 Text(formatResetsIn(window.resetsIn()),
                     style = TextStyle(color = secondaryText(), fontSize = 11.sp), maxLines = 2)
+                Text(providerSubtitle(name, snapshot.orderedProviders().firstOrNull { it.first == name }?.second?.plan),
+                    style = TextStyle(color = secondaryText(), fontSize = 10.sp), maxLines = 1)
                 Spacer(GlanceModifier.size(8.dp))
                 snapshot.orderedProviders().filter { it.first != name }.forEach { (providerName, provider) ->
-                    provider.glanceWindows().firstOrNull()?.let { limit ->
-                        Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
-                            ProviderMark(ProviderId.of(providerName.lowercase()), stale = snapshot.isStale() || provider.isStaleAt())
-                            Spacer(GlanceModifier.size(4.dp))
-                            Text("$providerName · ${limit.label.ifEmpty { limit.id }} ${limit.shown(mode)}% ${if (mode.isUsed) "used" else "left"}${if (snapshot.isStale() || provider.isStaleAt()) " · Out of date" else ""}",
-                                style = TextStyle(color = primaryText(), fontSize = 11.sp), maxLines = 2)
-                        }
+                    val limit = provider.glanceWindows().firstOrNull()
+                    val providerStale = snapshot.isStale() || provider.isStaleAt()
+                    Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
+                        ProviderMark(ProviderId.of(providerName.lowercase()), stale = providerStale)
                         Spacer(GlanceModifier.size(4.dp))
+                        val detail = limit?.let {
+                            "${it.glanceLabel()} ${it.shown(mode)}% ${if (mode.isUsed) "used" else "left"}"
+                        } ?: "No data"
+                        Text("$providerName · $detail${if (providerStale) " · Out of date" else ""}",
+                            style = TextStyle(color = if (providerStale) secondaryText() else primaryText(),
+                                fontSize = 11.sp), maxLines = 2)
                     }
+                    Spacer(GlanceModifier.size(4.dp))
                 }
             }
         }
@@ -236,14 +238,14 @@ private fun MiniRing(window: Window?, stale: Boolean, diameterDp: Int, mode: Dis
         Image(
             provider = ImageProvider(bitmap),
             contentDescription = window?.let {
-                "${it.label}: ${it.shown(mode)} percent ${if (mode.isUsed) "used" else "left"}" +
+                "${it.glanceLabel()}: ${it.shown(mode)} percent ${if (mode.isUsed) "used" else "left"}" +
                     if (stale) ", out of date" else ""
             } ?: "No usage available",
             modifier = GlanceModifier.size(diameterDp.dp),
         )
         Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
             Text(shown?.let { "$it%" } ?: "—",
-                style = TextStyle(color = primaryText(), fontSize = (diameterDp * .29f).sp,
+                style = TextStyle(color = if (stale) staleText() else primaryText(), fontSize = (diameterDp * .29f).sp,
                     fontWeight = FontWeight.Medium), maxLines = 1)
             Text(if (mode.isUsed) "used" else "left",
                 style = TextStyle(color = secondaryText(), fontSize = (diameterDp * .14f).sp), maxLines = 1)
@@ -292,3 +294,5 @@ private fun secondaryText() = DayNightColorProvider(
     day = QuotaColors.TextSecondaryLight,
     night = QuotaColors.TextSecondaryDark,
 )
+
+private fun staleText() = DayNightColorProvider(day = QuotaColors.Stale, night = QuotaColors.Stale)
