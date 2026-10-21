@@ -64,7 +64,7 @@ fun RingGauge(
     Column(
         modifier = modifier.clearAndSetSemantics {
             contentDescription =
-                "${window.label}: ${window.shown(mode)} percent $word, ${formatResetsIn(resetsIn)}${if (stale) ", out of date" else ""}"
+                "${window.glanceLabel()}: ${window.shown(mode)} percent $word, ${formatResetsIn(resetsIn)}${if (stale) ", out of date" else ""}"
         },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Dimens.Grid),
@@ -83,7 +83,7 @@ fun RingGauge(
                     fontSize = (diameter.value * 0.29f).sp,
                     lineHeight = (diameter.value * 0.32f).sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if (stale) QuotaColors.Stale else MaterialTheme.colorScheme.onSurface,
                 )
                 // The mode has to be readable at a glance, not guessed from the number.
                 Text(
@@ -95,7 +95,7 @@ fun RingGauge(
             }
         }
         if (showDetails) Text(
-            text = window.label,
+            text = window.glanceLabel(),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

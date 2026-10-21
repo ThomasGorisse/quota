@@ -30,8 +30,8 @@ provider, number of windows, or available capacity.
   Web desktop uses one 224 px gauge per provider, with intrinsic card height.
 - Small widgets and Watch: one overall hero. Medium/large widgets: one overall hero with
   the other providers' selected windows as quiet text, in canonical order.
-- TRMNL: one 192 px gauge per reported provider. All columns use the same gauge size,
-  whether there are one, two or three providers.
+- TRMNL: one primary SVG bar and large percentage per reported provider, with equal-width
+  columns. Preserve the newer account banner and SVG rendering; secondary windows are text.
 - The number and `%` are one typographic value: **32%**. Put **left** or **used** directly
   underneath. In inline supporting text, use **Week 32% left**.
 - Read the hero first, then its window label, then its reset. In vertical layouts the label
@@ -78,7 +78,7 @@ still identify the selected provider and window. They never fabricate a zero whe
   weight; exact 600/tabular font control needs native verification before changing that API.
 - Radius 20 cards / 12 chips; primary spacing on an 8 grid, 4 for compact text rhythm.
 - Hero strokes 8 on phone, 6–8 on widgets/Watch. Web's 10-unit stroke scales with its SVG;
-  TRMNL uses a 12-unit black stroke. Tracks stay neutral.
+  TRMNL uses a black SVG outline. Tracks stay neutral.
 - The arc alone animates on value change, 400 ms ease-out. Respect reduced motion. Widget
   snapshots and e-ink never animate. State colour and text change immediately.
 
@@ -86,16 +86,17 @@ still identify the selected provider and window. They never fabricate a zero whe
 
 White background, black ink, no greys, shadows or gradients. Ready has a plain label;
 Running low has a solid outlined label; Nearly empty has a black label with white lettering;
-Out of date has a dashed label and a dashed ring, retaining the last reported number.
+Out of date has a dashed outline and a dashed empty bar, retaining the last reported number.
 These shapes carry the distinction without hue.
 
-`buildMergeVariables` supplies layout version 3, `display_word`, and per provider its
-presence, plan and `<provider>_windows`: every valid window, weekly buckets first, each with
-its label, display-ready value, reset, state and `weekly` flag. No window is elected a hero
-any more — the board shows all of them, so Claude's per-model `Week · Fable` bucket is a row
-of its own rather than a fragment of a detail line. This private presentation adapter does
-not change `GET /v1/status`. The Liquid template refuses legacy variables instead of guessing
-missing values. Update the template and Worker together.
+`buildMergeVariables` supplies layout version 4, `display_word`, and per provider its
+presence, plan and `<provider>_windows`: every valid window, highest USED first, each with
+its label, display-ready value, reset, state and `primary` flag. Exactly one valid window per
+provider is primary, with stable backend order on ties. All other windows, including per-model
+limits and reserve, remain visible as text. The `weekly` field remains cadence metadata only.
+This private presentation adapter does not change `GET /v1/status`. The Liquid template refuses
+legacy variables instead of guessing missing values. Update the template and Worker together;
+this pass performs no deployment.
 
 ## 11 September visual update
 

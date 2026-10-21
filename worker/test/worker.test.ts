@@ -187,16 +187,17 @@ describe('cron', () => {
     expect(url).toBe('https://trmnl.com/api/custom_plugins/abc');
     const body = JSON.parse(init.body as string);
     const v = body.merge_variables;
-    expect(v.layout_version).toBe(3);
-    // The whole window list travels end to end, weekly first, per-model row included.
+    expect(v.layout_version).toBe(4);
+    // The whole list travels end to end with one primary and stable ties.
     expect(v.claude_windows.map((w: { id: string }) => w.id))
-      .toEqual(['weekly', 'weekly_fable', 'session']);
+      .toEqual(['weekly', 'session', 'weekly_fable']);
     expect(v.claude_windows[0]).toMatchObject({ label: 'Week', value: 39, state: 'warn', weekly: true });
-    expect(v.claude_windows[1]).toMatchObject({ label: 'Week · Fable', value: 82, weekly: true });
-    expect(v.claude_windows[2]).toMatchObject({ label: '5 h', value: 82, weekly: false });
+    expect(v.claude_windows[0].primary).toBe(true);
+    expect(v.claude_windows[1]).toMatchObject({ label: '5 h', value: 82, weekly: false, primary: false });
+    expect(v.claude_windows[2]).toMatchObject({ label: 'Week · Fable', value: 82, weekly: true, primary: false });
     expect(v.codex_windows).toEqual([
       { id: 'session', label: '5 h', value: 90, reset: 'Reset time unknown',
-        state: 'ok', state_label: 'Ready', weekly: false },
+        state: 'ok', state_label: 'Ready', weekly: false, primary: true },
     ]);
     // Providers the collector never sent say so, and carry no windows at all.
     expect(v.gemini_present).toBe(false);

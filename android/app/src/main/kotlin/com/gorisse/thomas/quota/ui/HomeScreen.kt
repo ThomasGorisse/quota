@@ -198,46 +198,57 @@ private fun ProviderCard(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .55f)),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ProviderMark(ProviderId.of(name.lowercase()), stale = stale)
-                Column(Modifier.weight(1f)) {
-                    Text(name, style = MaterialTheme.typography.titleMedium)
-                    val subtitle = providerSubtitle(name, provider.plan)
-                    if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                if (hero != null) SeverityPill(if (stale) Severity.STALE else hero.severity)
-            }
-            if (hero != null) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                    RingGauge(hero, stale, diameter = 112.dp, resetsIn = hero.resetsIn(now), showDetails = false, mode = mode)
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(hero.label.ifEmpty { hero.id }, style = MaterialTheme.typography.titleMedium)
-                        Text(formatResetsIn(hero.resetsIn(now)), style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                if (windows.size > 1 && expanded) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
-                    windows.drop(1).forEach { window ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Text(window.label.ifEmpty { window.id }, Modifier.weight(1f),
-                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("${window.shown(mode)}% ${if (mode.isUsed) "used" else "left"}",
-                                style = MaterialTheme.typography.labelLarge)
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (hero != null) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        RingGauge(hero, stale, diameter = 112.dp, resetsIn = hero.resetsIn(now),
+                            showDetails = false, mode = mode)
+                        if (windows.size > 1) {
+                            TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) {
+                                Text(if (expanded) "Hide details" else "Details")
+                            }
                         }
                     }
                 }
-                if (windows.size > 1) {
-                    TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) {
-                        Text(if (expanded) "Hide details" else "Details")
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ProviderMark(ProviderId.of(name.lowercase()), stale = stale)
+                        Text(name, style = MaterialTheme.typography.titleMedium)
+                    }
+                    val subtitle = providerSubtitle(name, provider.plan)
+                    if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (hero != null) {
+                        Text(hero.glanceLabel(), style = MaterialTheme.typography.titleMedium)
+                        Text(formatResetsIn(hero.resetsIn(now)), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        SeverityPill(if (stale) Severity.STALE else hero.severity)
+                        windows.drop(1).forEach { window ->
+                            Text("${window.glanceLabel()} ${window.shown(mode)}% ${if (mode.isUsed) "used" else "left"}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        Text("No data", style = MaterialTheme.typography.titleMedium)
+                        Text(if (provider.extra.containsKey("error")) "Couldn’t read this provider. Check its connection on your Mac." else "Waiting for a usage reading from your Mac.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-            } else {
-                Text("No data", style = MaterialTheme.typography.titleMedium)
-                Text(if (provider.extra.containsKey("error")) "Couldn’t read this provider. Check its connection on your Mac." else "Waiting for a usage reading from your Mac.", style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (expanded && windows.size > 1) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
+                windows.drop(1).forEach { window ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("${window.glanceLabel()} ${window.shown(mode)}% ${if (mode.isUsed) "used" else "left"}",
+                            style = MaterialTheme.typography.labelLarge)
+                        Text(formatResetsIn(window.resetsIn(now)), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
         }
     }

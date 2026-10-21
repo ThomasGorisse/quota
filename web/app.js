@@ -28,7 +28,7 @@
     const list = Array.isArray(snapshot?.providers?.[id]?.windows) ? snapshot.providers[id].windows : [];
     return list
       .filter((w) => w && typeof w.id === 'string' && validPercent(w.percent))
-      .map((w, index) => ({ ...w, order: index, text: w.label || w.id }))
+      .map((w, index) => ({ ...w, order: index, text: typeof w.label === 'string' && w.label.trim() ? w.label : w.id }))
       .sort((a, b) => b.percent - a.percent || a.order - b.order);
   }
 
@@ -47,7 +47,6 @@
   let displayMode = displayModes.includes(query.get('display')) ? query.get('display') : 'remaining';
   let savingDisplay = false;
   let showHistory = false;
-  try { showHistory = localStorage.getItem('quota.history') === 'true'; } catch { /* Use the default. */ }
 
   let demoSnapshot;
   const cards = new Map();
@@ -176,13 +175,7 @@
     card.setAttribute('aria-labelledby', `${id}-title`);
     const icon = marks[id];
     // Only fixed, local markup is inserted as HTML. API strings use textContent.
-    card.innerHTML = `<header class="provider-header"><div class="provider-identity"><span class="provider-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${icon}</svg></span><div><h2 id="${id}-title">${providerNames[id]}</h2><div class="provider-subtitle">${subtitles[id]}</div></div></div><span class="provider-state"></span></header><div class="gauges"></div><button class="details-toggle" type="button" aria-expanded="false">Details</button><p class="provider-empty" hidden>No limits reported yet</p><div class="history" hidden><div class="history-heading"><span>Last 24 hours</span><span class="history-legend"><span class="legend-primary"><i class="history-key"></i><span class="legend-text"></span></span><span class="legend-secondary"><i class="history-key week"></i><span class="legend-text"></span></span></span></div><svg viewBox="0 0 600 60" preserveAspectRatio="none" role="img" aria-label="${providerNames[id]} remaining capacity over the last 24 hours"><line class="history-baseline" x1="0" y1="59" x2="600" y2="59"/><polyline class="session-line"/><polyline class="weekly-line"/></svg></div>`;
-    const detailsToggle = card.querySelector('.details-toggle');
-    detailsToggle.addEventListener('click', () => {
-      const expanded = card.classList.toggle('expanded');
-      detailsToggle.setAttribute('aria-expanded', String(expanded));
-      detailsToggle.textContent = expanded ? 'Hide details' : 'Details';
-    });
+    card.innerHTML = `<header class="provider-header"><div class="provider-identity"><span class="provider-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${icon}</svg></span><div><h2 id="${id}-title">${providerNames[id]}</h2><div class="provider-subtitle">${subtitles[id]}</div></div></div><span class="provider-state"></span></header><div class="gauges"></div><p class="provider-empty" hidden>No data</p><div class="history" hidden><div class="history-heading"><span>Last 24 hours</span><span class="history-legend"><span class="legend-primary"><i class="history-key"></i><span class="legend-text"></span></span><span class="legend-secondary"><i class="history-key week"></i><span class="legend-text"></span></span></span></div><svg viewBox="0 0 600 60" preserveAspectRatio="none" role="img" aria-label="${providerNames[id]} remaining capacity over the last 24 hours"><line class="history-baseline" x1="0" y1="59" x2="600" y2="59"/><polyline class="session-line"/><polyline class="weekly-line"/></svg></div>`;
     $('#providers').append(card);
     const entry = { element: card, gauges: new Map() };
     cards.set(id, entry);
@@ -279,7 +272,7 @@
       const state = providerStale ? 'stale' : reported.length ? severity(reported[0].percent) : 'loading';
       const stateLabel = card.element.querySelector('.provider-state');
       stateLabel.dataset.severity = state;
-      stateLabel.textContent = { ok: 'Available', warn: 'Running low', critical: 'Nearly empty', stale: 'Out of date', loading: 'No data' }[state];
+      stateLabel.textContent = { ok: 'Ready', warn: 'Running low', critical: 'Nearly empty', stale: 'Out of date', loading: 'No data' }[state];
       // A window that vanished from the payload must take its gauge with it.
       for (const [windowId, gauge] of card.gauges) {
         if (!reported.some((w) => w.id === windowId)) { gauge.remove(); card.gauges.delete(windowId); }
@@ -325,7 +318,7 @@
       card.element.querySelector('.gauges').style.setProperty('--count', Math.max(1, count));
       card.element.dataset.windows = count;
       card.element.querySelector('.provider-empty').hidden = count > 0;
-      card.element.querySelector('.provider-empty').textContent = 'No limits reported yet';
+      card.element.querySelector('.provider-empty').textContent = 'No data';
       renderHistory(card, id, reported);
     }
   }
@@ -436,7 +429,6 @@
   });
   $('#history-toggle').addEventListener('click', () => {
     showHistory = !showHistory;
-    try { localStorage.setItem('quota.history', String(showHistory)); } catch { /* Still works for this visit. */ }
     render();
   });
   // Pairing another screen: the link carries the token, so the QR is drawn here, in the page.

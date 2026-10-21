@@ -167,32 +167,32 @@ describe('history', () => {
 });
 
 describe('merge variables', () => {
-  it('lists every window per provider, weekly ones first', () => {
+  it('keeps every window and gives only the most-used one primary treatment', () => {
     const status = buildStatus(snapshot(), [], DEFAULT_SETTINGS, NOW);
     const v = buildMergeVariables(status, NOW);
-    expect(v.layout_version).toBe(3);
+    expect(v.layout_version).toBe(4);
     expect(v.display_word).toBe('left');
     expect(v.updated).toBe('18:00');
     expect(v.stale).toBe(false);
     expect(v.claude_present).toBe(true);
     expect(v.claude_plan).toBe('Anthropic · Max');
-    // No hero any more: the whole list travels, weekly first, declared order inside a group.
+    // Values, labels and resets travel together; cadence does not choose the headline.
     expect(v.claude_windows).toEqual([
       {
         id: 'weekly', label: 'Week', value: 40, reset: 'Resets in 2 d 18 h',
-        state: 'warn', state_label: 'Running low', weekly: true,
+        state: 'warn', state_label: 'Running low', weekly: true, primary: true,
       },
       {
         id: 'session', label: '5 h', value: 89, reset: 'Resets in 2 h 10 min',
-        state: 'ok', state_label: 'Ready', weekly: false,
+        state: 'ok', state_label: 'Ready', weekly: false, primary: false,
       },
     ]);
     expect(v.codex_plan).toBe('ChatGPT Plus');
-    // Codex reserve refills weekly, so it rides with the weekly group, ahead of the session.
+    // Session leads here because it is the most used, not because of its id.
     expect((v.codex_windows as MergeWindow[]).map((w) => [w.id, w.value, w.weekly])).toEqual([
-      ['weekly', 94, true],
-      ['reserve', 90, true],
       ['session', 88, false],
+      ['reserve', 90, true],
+      ['weekly', 94, true],
     ]);
     expect(JSON.stringify(v).length).toBeLessThan(4096);
   });
@@ -213,6 +213,50 @@ describe('merge variables', () => {
     const v = buildMergeVariables(status, NOW);
     expect(v.display_word).toBe('used');
     expect((v.claude_windows as MergeWindow[]).map((w) => w.value)).toEqual([60, 11]);
+  });
+
+  it('selects reserve and unsorted model windows by raw usage, retaining ties', () => {
+    const snap = withGemini();
+    snap.providers.codex.windows = [
+      { id: 'reserve', label: 'Reserve', percent: 85.1, resets_at: null },
+      { id: 'weekly', label: 'Week', percent: 85.1, resets_at: null },
+      { id: 'session', label: '5 h', percent: 85, resets_at: null },
+    ];
+    snap.providers.gemini.windows.reverse();
+    for (const display of ['remaining', 'used'] as const) {
+      const v = buildMergeVariables(buildStatus(snap, [], { ...DEFAULT_SETTINGS, display }, NOW), NOW);
+      const codex = v.codex_windows as MergeWindow[];
+      expect(codex.map(w => w.id)).toEqual(['reserve', 'weekly', 'session']);
+      expect(codex.filter(w => w.primary)).toHaveLength(1);
+      expect(codex[0]).toMatchObject({ primary: true, state: 'critical', value: display === 'used' ? 85 : 15 });
+      expect((v.gemini_windows as MergeWindow[])[0].id).toBe('gemini-3-pro');
+    }
+  });
+
+  it('uses the supplied identity and rounds reset durations up to minutes', () => {
+    const snap = snapshot();
+    snap.providers.codex.windows = [
+      { id: 'weekly', label: '   ', percent: 74.5, resets_at: new Date(NOW + 1).toISOString() },
+      { id: 'reserve', label: 'Reserve', percent: 10, resets_at: 'invalid' },
+      { id: 'past', label: 'Past', percent: 0, resets_at: new Date(NOW).toISOString() },
+    ];
+    const v = buildMergeVariables(buildStatus(snap, [], DEFAULT_SETTINGS, NOW), NOW);
+    expect((v.codex_windows as MergeWindow[])[0]).toMatchObject({ label: 'weekly', value: 25, reset: 'Resets in 1 min', primary: true });
+    expect((v.codex_windows as MergeWindow[]).map(w => w.reset)).toEqual(['Resets in 1 min', 'Reset time unknown', 'Reset due']);
+  });
+
+  it.each([0, 59.9, 60, 85, 85.1, 86, 100])('keeps severity tied to raw USED %s', used => {
+    const snap = snapshot(used, 0);
+    const v = buildMergeVariables(buildStatus(snap, [], DEFAULT_SETTINGS, NOW), NOW);
+    expect((v.claude_windows as MergeWindow[])[0].state).toBe(severityFor(used, DEFAULT_SETTINGS));
+  });
+
+  it('filters non-finite values without fabricating capacity', () => {
+    const snap = snapshot();
+    snap.providers.claude.windows = [NaN, Infinity, -1, 101].map(percent => ({ id: 'bad', label: '', percent, resets_at: null }));
+    const v = buildMergeVariables(buildStatus(snap, [], DEFAULT_SETTINGS, NOW), NOW);
+    expect(v.claude_present).toBe(true);
+    expect(v.claude_windows).toEqual([]);
   });
 
   it('formats countdowns', () => {

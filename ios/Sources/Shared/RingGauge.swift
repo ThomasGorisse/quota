@@ -54,7 +54,7 @@ struct RingGauge: View {
             Text("\(value)%")
                 .font(.system(size: diameter * valueScale, weight: valueWeight))
                 .monospacedDigit()
-                .foregroundStyle(palette.textPrimary)
+                .foregroundStyle(severity == .stale ? QuotaTheme.stale : palette.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.4)
             if showsCaption {

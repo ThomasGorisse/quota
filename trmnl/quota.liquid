@@ -1,10 +1,9 @@
 {%- comment -%}
-Quota, full 800 x 480. Requires layout_version 3 from buildMergeVariables.
+Quota, full 800 x 480. Requires layout_version 4 from buildMergeVariables.
 No legacy fallback: an older payload shows a waiting message rather than a wrong board,
 because an absent window must never read as 100 % left.
-One column per reported provider, one horizontal bar per quota window: the weekly windows
-(including Claude's per-model `Week · Fable` and Codex's reserve) get the large treatment,
-the rolling session sits underneath in small type.
+One column per reported provider, one primary SVG bar for its most-used window.
+All other windows remain visible as quiet text, including per-model limits and reserve.
 Starts at the layout class: TRMNL adds the view wrapper itself and its markup linter
 rejects a hand-written `view view--full` (checked against the live API, 2026-09-15).
 {%- endcomment -%}
@@ -37,7 +36,7 @@ payload arrives. A plugin named plain "Quota" gets no banner.
     <text x="100%" dx="-14" y="26" text-anchor="end" fill="black" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="2">QUOTA</text>
   </svg>
   {% endif %}
-  {% if version == 3 %}
+  {% if version == 4 %}
   <div style="display: flex; width: 100%; align-items: flex-start; gap: 18px;">
     {%- assign reported_count = 0 -%}
     {% for id in ids %}
@@ -72,42 +71,30 @@ payload arrives. A plugin named plain "Quota" gets no banner.
               out of date: three states a 1-bit screen can tell apart at a metre, with no
               dithered grey anywhere.
               {%- endcomment -%}
-              {%- if w.state == 'critical' -%}
-                {%- assign ink = 'white' -%}{%- assign paper = 'black' -%}
-                {%- assign box = 'background: black; color: white; padding: 5px 7px;' -%}
-              {%- elsif w.state == 'warn' -%}
-                {%- assign ink = 'black' -%}{%- assign paper = 'white' -%}
-                {%- assign box = 'border: 2px solid black; padding: 3px 5px;' -%}
-              {%- else -%}
-                {%- assign ink = 'black' -%}{%- assign paper = 'white' -%}
-                {%- assign box = 'padding: 0 7px 0 0;' -%}
-              {%- endif -%}
-              {%- if w.weekly -%}
-                {%- assign label_size = 22 -%}{%- assign value_size = 30 -%}
-                {%- assign bar_height = 22 -%}{%- assign reset_size = 15 -%}
-                {%- assign gap = 14 -%}
-              {%- else -%}
-                {%- assign label_size = 16 -%}{%- assign value_size = 20 -%}
-                {%- assign bar_height = 12 -%}{%- assign reset_size = 13 -%}
-                {%- assign gap = 12 -%}
-              {%- endif -%}
-              <div style="margin-bottom: {{ gap }}px; {{ box }}">
-                <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 6px;">
-                  <span style="font-size: {{ label_size }}px; font-weight: 600; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere;">{{ w.label | escape }}</span>
-                  <span style="font-size: {{ value_size }}px; font-weight: 700; flex: 0 0 auto; white-space: nowrap;">{{ w.value }}% {{ word | escape }}</span>
-                </div>
+              {% if w.primary %}
+              <div style="margin-bottom: 16px;">
+                <div style="font-size: 64px; line-height: 1; font-weight: 700; margin-top: 10px;">{{ w.value }}%</div>
+                <div style="font-size: 18px; margin: 4px 0 12px;">{{ word | escape }}</div>
                 {%- comment -%}
                 SVG rectangles rather than CSS backgrounds: the device pipeline keeps vector
                 fills where a background-color can be dropped, and a 1-bit screen has no
                 grey to lose here. The stroke is drawn at 4px so 2px survive the edge clip.
                 {%- endcomment -%}
                 <svg role="img" aria-label="{{ w.label | escape }} {{ w.value }} percent {{ word | escape }}; {{ w.state_label | escape }}"
-                     width="100%" height="{{ bar_height }}" style="display: block; margin-top: 3px;">
-                  <rect x="0" y="0" width="100%" height="100%" fill="{{ paper }}" stroke="{{ ink }}" stroke-width="4"{% if w.state == 'stale' %} stroke-dasharray="8 5"{% endif %}/>
-                  {% unless w.state == 'stale' %}<rect x="0" y="0" width="{{ w.value }}%" height="100%" fill="{{ ink }}"/>{% endunless %}
+                     width="100%" height="22" style="display: block; margin-top: 3px;">
+                  <rect x="0" y="0" width="100%" height="100%" fill="white" stroke="black" stroke-width="4"{% if w.state == 'stale' %} stroke-dasharray="8 5"{% endif %}/>
+                  {% unless w.state == 'stale' %}<rect x="0" y="0" width="{{ w.value }}%" height="100%" fill="black"/>{% endunless %}
                 </svg>
-                <div style="font-size: {{ reset_size }}px; margin-top: 2px;">{% if w.state == 'stale' %}{{ w.state_label | escape }} &middot; {% endif %}{{ w.reset | escape }}</div>
+                <div style="font-size: 22px; font-weight: 600; margin-top: 10px; overflow-wrap: anywhere;">{{ w.label | escape }}</div>
+                <div style="font-size: 15px; margin-top: 4px;">{{ w.reset | escape }}</div>
+                <svg role="img" aria-label="{{ w.state_label | escape }}" width="100%" height="28" style="display: block; margin-top: 8px;">
+                  {% if w.state != 'ok' %}<rect x="1" y="1" width="98%" height="26" fill="{% if w.state == 'critical' %}black{% else %}white{% endif %}" stroke="black" stroke-width="2"{% if w.state == 'stale' %} stroke-dasharray="6 4"{% endif %}/>{% endif %}
+                  <text x="8" y="20" fill="{% if w.state == 'critical' %}white{% else %}black{% endif %}" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600">{{ w.state_label | escape }}</text>
+                </svg>
               </div>
+              {% else %}
+                <div style="font-size: 16px; line-height: 1.3; margin-bottom: 8px; overflow-wrap: anywhere;">{{ w.label | escape }} {{ w.value }}% {{ word | escape }}</div>
+              {% endif %}
             {% endfor %}
           {% endif %}
         </div>

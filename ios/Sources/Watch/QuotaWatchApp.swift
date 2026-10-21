@@ -27,7 +27,8 @@ struct WatchHomeView: View {
                           severity: snapshot.isStale(provider: hero.provider, now: now) ? .stale : hero.window.severity,
                           mode: snapshot.display, diameter: 104, stroke: 8, valueScale: 0.30)
                 HStack(spacing: 4) {
-                    BrandGlyph(providerName: hero.provider, size: 12)
+                    BrandGlyph(providerName: hero.provider, size: 12,
+                               stale: snapshot.isStale(provider: hero.provider, now: now))
                     Text("\(hero.provider) · \(hero.window.displayLabel)")
                         .font(.system(size: 14, weight: .semibold))
                         .lineLimit(1).minimumScaleFactor(0.7)
