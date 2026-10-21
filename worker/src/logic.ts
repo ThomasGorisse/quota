@@ -237,7 +237,7 @@ export function buildMergeVariables(status: StatusBody, now: number): MergeVaria
       .sort((a, b) => b.w.percent - a.w.percent || a.order - b.order)
       .map(({ w, weekly }, index): MergeWindow => ({
         id: w.id,
-        label: w.label.trim() || w.id,
+        label: String(w.label ?? '').trim() || w.id,
         value: shown(w.percent),
         reset: reset(w.resets_at),
         state: outdated ? 'stale' : state(w.percent),
