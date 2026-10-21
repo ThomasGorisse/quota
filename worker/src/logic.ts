@@ -176,7 +176,9 @@ export interface MergeWindow {
   reset: string;
   state: 'ok' | 'warn' | 'critical' | 'stale';
   state_label: string;
-  /** True for the windows that get the large treatment on the board. */
+  /** The single highest-used valid window, independent of display mode. */
+  primary: boolean;
+  /** Cadence metadata retained for older presentation consumers. */
   weekly: boolean;
 }
 
@@ -212,7 +214,7 @@ export function buildMergeVariables(status: StatusBody, now: number): MergeVaria
   };
   const shown = (used: number) => word === 'used' ? Math.round(used) : 100 - Math.round(used);
   const vars: MergeVariables = {
-    layout_version: 3,
+    layout_version: 4,
     display_word: word,
     updated: formatClock(status.collected_at),
     stale: status.stale,
@@ -227,19 +229,20 @@ export function buildMergeVariables(status: StatusBody, now: number): MergeVaria
       ? (/^chatgpt/i.test(plan) ? plan : `ChatGPT ${titlePlan}`.trim())
       : [id === 'claude' ? 'Anthropic' : 'Google', titlePlan].filter(Boolean).join(' · ');
     const outdated = status.stale || !!provider.stale;
-    // Weekly first, then the rest; inside each group the collector's order is preserved,
-    // so `weekly` stays ahead of `weekly_fable`. Absent is never zero used / 100 left.
+    // One headline, including for model-specific limits and reserve. Stable ties retain
+    // the collector's order; converting to remaining must never change the selection.
     const rows = (provider.windows ?? [])
       .filter(w => Number.isFinite(w.percent) && w.percent >= 0 && w.percent <= 100)
       .map((w, order) => ({ w, order, weekly: isWeeklyWindow(id, w.id) }))
-      .sort((a, b) => Number(b.weekly) - Number(a.weekly) || a.order - b.order)
-      .map(({ w, weekly }): MergeWindow => ({
+      .sort((a, b) => b.w.percent - a.w.percent || a.order - b.order)
+      .map(({ w, weekly }, index): MergeWindow => ({
         id: w.id,
-        label: w.label || w.id,
+        label: w.label.trim() || w.id,
         value: shown(w.percent),
         reset: reset(w.resets_at),
         state: outdated ? 'stale' : state(w.percent),
         state_label: outdated ? 'Out of date' : wording[state(w.percent)],
+        primary: index === 0,
         weekly,
       }));
     vars[`${id}_windows`] = rows;

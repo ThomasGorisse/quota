@@ -31,14 +31,14 @@ Each Mac's collector feeds its own device token, and each token pushes to one we
 a personal and a work account on the same display, run the script once per Mac with its
 own name — `--name "Quota Perso"` on one, `--name "Quota Pro"` on the other. Both plugins
 carry the same markup; it reads the account from the plugin's name, drops the leading
-`Quota` and prints the rest in capitals in a black band across the top (`PERSO`, `PRO`)
+`Quota` and prints the rest in capitals in an outlined SVG banner across the top (`PERSO`, `PRO`)
 and in the title bar. A plugin named plain `Quota` gets no band. Nothing changes in the
 relay.
 
 A webhook plugin that has never received data renders TRMNL's placeholder, not this
 template, and TRMNL only renders when the device next checks in (every 5 minutes by
 default). The template's own waiting screen, with the band, shows for a payload older than
-`layout_version` 3.
+`layout_version` 4.
 
 Verified against the live API on 2026-09-15: private plugins are `plugin_id` 37 (override
 with `--plugin-id`); the markup linter **rejects a hand-written `view view--full` wrapper**,
@@ -65,31 +65,31 @@ so the template starts at `.layout`; screenshots take **no** `device_model` (`og
    ```
 
    The next cron tick (within 5 minutes) delivers the first payload. To preview the
-   template before pairing the display, use this version 3 sample in TRMNL's markup editor:
+   template before pairing the display, use this version 4 sample in TRMNL's markup editor:
 
    ```json
    {
-     "layout_version": 3,
+     "layout_version": 4,
      "display_word": "left",
      "updated": "21:25",
      "stale": false,
      "claude_present": true,
      "claude_plan": "Anthropic · Max",
      "claude_windows": [
-       {"id": "weekly", "label": "Week", "value": 80, "reset": "Resets in 3 d 14 h",
-        "state": "ok", "state_label": "Ready", "weekly": true},
-       {"id": "weekly_fable", "label": "Week · Fable", "value": 82, "reset": "Resets in 3 d 14 h",
-        "state": "ok", "state_label": "Ready", "weekly": true},
        {"id": "session", "label": "5 h", "value": 52, "reset": "Resets in 3 h 24 min",
-        "state": "ok", "state_label": "Ready", "weekly": false}
+        "state": "ok", "state_label": "Ready", "weekly": false, "primary": true},
+       {"id": "weekly", "label": "Week", "value": 80, "reset": "Resets in 3 d 14 h",
+        "state": "ok", "state_label": "Ready", "weekly": true, "primary": false},
+       {"id": "weekly_fable", "label": "Week · Fable", "value": 82, "reset": "Resets in 3 d 14 h",
+        "state": "ok", "state_label": "Ready", "weekly": true, "primary": false}
      ],
      "codex_present": true,
      "codex_plan": "ChatGPT Pro 5x",
      "codex_windows": [
        {"id": "weekly", "label": "Week", "value": 31, "reset": "Resets in 4 d 14 h",
-        "state": "warn", "state_label": "Running low", "weekly": true},
+        "state": "warn", "state_label": "Running low", "weekly": true, "primary": true},
        {"id": "reserve", "label": "Reserve", "value": 100, "reset": "Resets in 7 d 0 h",
-        "state": "ok", "state_label": "Ready", "weekly": true}
+        "state": "ok", "state_label": "Ready", "weekly": true, "primary": false}
      ],
      "gemini_present": false
    }
@@ -104,13 +104,13 @@ from its `tokens:trmnl` index and stops pushing.
 
 | Variable | Type | Meaning |
 |---|---|---|
-| `layout_version` | int | Must be `3`; earlier payloads show a waiting message |
+| `layout_version` | int | Must be `4`; earlier payloads show a waiting message |
 | `display_word` | string | `left` or `used`, matching the device setting |
 | `updated` | string | `HH:MM` UTC of the last collection |
 | `stale` | bool | The overall snapshot is out of date |
 | `<provider>_present` | bool | Only reported providers receive a column |
 | `<provider>_plan` | string | Provider and subscription label |
-| `<provider>_windows` | array | Every valid window, weekly ones first; empty means “No data” |
+| `<provider>_windows` | array | Every valid window, highest USED first; empty means “No data” |
 
 Each entry of `<provider>_windows`:
 
@@ -122,21 +122,23 @@ Each entry of `<provider>_windows`:
 | `reset` | string | Human-readable reset time |
 | `state` | string | `ok`, `warn`, `critical`, or `stale` (including provider cache age) |
 | `state_label` | string | Human-readable status |
-| `weekly` | bool | Gets the large treatment: weekly buckets, Codex reserve, every Gemini bucket |
+| `primary` | bool | Only the highest-used valid window gets the primary indicator |
+| `weekly` | bool | Cadence metadata retained from version 3; does not select the primary |
 
-`<provider>` is `claude`, `codex`, or `gemini`. The Worker keeps the collector’s order
-inside each group and formats the variables. The template must **not** subtract the
+`<provider>` is `claude`, `codex`, or `gemini`. The Worker sorts by raw USED percentage, preserves collector order on ties,
+and formats the variables. Selection does not change with Left/Used. The template must **not** subtract the
 value from 100 a second time. Unreported windows never become 100% remaining.
 
 ## Notes
 
 - Designed for TRMNL OG, landscape **800 × 480**, full view. The reported providers share
-  equal-width columns, each one horizontal bar per window: weekly bars in large type,
-  the rolling session smaller underneath. Checked without overflow at eight windows over
-  three columns.
+  equal-width columns, each with one primary SVG bar, its large percentage, window, reset
+  and state. All secondary windows are quiet text underneath. The newer SVG account banner
+  and device-compatible vector fills are preserved.
 - 1-bit e-ink: no colour or opacity. A bar is a solid black fill inside a hairline box.
-  Critical inverts the whole row, warning boxes it, and stale data draws a dashed empty
-  bar with an explicit “Out of date” label.
+  SVG state labels are filled black for critical, outlined for warning, and dashed for stale.
+  Stale data draws a dashed empty bar with an explicit “Out of date” label. Shapes use SVG
+  so dropping CSS backgrounds cannot hide the critical state.
 - The template accepts variables at the root or under `merge_variables`, and escapes
   provider strings before rendering.
 - `.claude/skills/trmnl/` vendors TRMNL's own agent skill (MIT, usetrmnl/trmnl-agent-skills
