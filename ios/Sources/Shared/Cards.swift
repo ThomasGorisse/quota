@@ -112,6 +112,7 @@ struct BrandMark: View {
 struct BrandGlyph: View {
     let providerName: String
     var size: CGFloat = 10
+    var stale: Bool = false
 
     private var assetName: String? {
         switch providerName.lowercased() {
@@ -131,6 +132,7 @@ struct BrandGlyph: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: size, height: size)
+                .foregroundStyle(stale ? QuotaTheme.stale : .primary)
         }
     }
 }
@@ -165,7 +167,6 @@ struct ProviderCard: View {
     var availableWidth: CGFloat = 358
     @Environment(\.palette) private var palette
     @Environment(\.dynamicTypeSize) private var dynamicType
-    @State private var expanded = false
 
     var body: some View {
         let layout = dynamicType.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 20)) : AnyLayout(HStackLayout(alignment: .center, spacing: 20))
@@ -178,22 +179,15 @@ struct ProviderCard: View {
                     Text(stale ? "Out of date" : hero.severity.label)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(QuotaTheme.color(for: stale ? .stale : hero.severity))
-                    Text(hero.label.isEmpty ? hero.id : hero.label)
+                    Text(hero.displayLabel)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(palette.textPrimary)
                     Text(QuotaFormat.resetLine(hero, now: now) ?? "Reset time unknown")
                         .font(.system(size: 12)).monospacedDigit()
                         .foregroundStyle(palette.textSecondary)
-                    if provider.windows.count > 1 {
-                        if expanded {
-                            ForEach(provider.primaryWindows(limit: provider.windows.count).dropFirst()) { window in
-                                Text("\(window.label.isEmpty ? window.id : window.label) \(window.value(mode))% \(mode.caption)")
-                                    .font(.system(size: 12)).monospacedDigit()
-                                    .foregroundStyle(palette.textSecondary)
-                            }
-                        }
-                        Button(expanded ? "Hide details" : "Details") { expanded.toggle() }
-                            .font(.caption)
+                    ForEach(provider.primaryWindows(limit: provider.windows.count).dropFirst()) { window in
+                        Text("\(window.displayLabel) \(window.value(mode))% \(mode.caption)")
+                            .font(.system(size: 12)).monospacedDigit()
                             .foregroundStyle(palette.textSecondary)
                     }
                 }

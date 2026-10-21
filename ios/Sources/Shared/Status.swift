@@ -88,7 +88,10 @@ struct Window: Codable, Equatable, Identifiable, Sendable {
     var percent: Double
     var resetsAt: String?
 
-    var displayLabel: String { label.isEmpty ? id : label }
+    var displayLabel: String {
+        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? id : trimmed
+    }
 
     enum CodingKeys: String, CodingKey {
         case id, label, percent

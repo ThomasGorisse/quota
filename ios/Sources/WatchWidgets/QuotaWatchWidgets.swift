@@ -37,8 +37,8 @@ struct QuotaWatchComplicationView: View {
         case .accessoryInline:
             let worst = entry.snapshot.mostCritical()
             Text(worst.map {
-                "\($0.provider) · \($0.window.displayLabel) · \($0.window.value(entry.snapshot.display))% \(entry.snapshot.display.caption)\(entry.snapshot.isStale(now: entry.date) ? " · Out of date" : "")"
-            } ?? "Quota")
+                "\($0.provider) · \($0.window.displayLabel) · \($0.window.value(entry.snapshot.display))% \(entry.snapshot.display.caption)\(entry.snapshot.isStale(provider: $0.provider, now: entry.date) ? " · Out of date" : "")"
+            } ?? "Quota · No data")
         default:
             QuotaCircularView(snapshot: entry.snapshot, now: entry.date)
                 .containerBackground(.clear, for: .widget)

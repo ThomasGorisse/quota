@@ -27,8 +27,11 @@ struct QuotaTimelineProvider: TimelineProvider {
             return
         }
         Task {
-            let snapshot = await QuotaClient().refreshSharedOrCached() ?? DemoData.snapshot()
-            completion(QuotaEntry(date: Date(), snapshot: snapshot))
+            let now = Date()
+            let snapshot = await QuotaClient().refreshSharedOrCached()
+                ?? Snapshot(status: StatusResponse(collectedAt: ISO8601.string(now), stale: true),
+                            receivedAt: now)
+            completion(QuotaEntry(date: now, snapshot: snapshot))
         }
     }
 
