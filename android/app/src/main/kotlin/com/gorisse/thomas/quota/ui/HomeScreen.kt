@@ -18,6 +18,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -55,6 +56,16 @@ import kotlinx.coroutines.launch
 
 /** Height of the pinned bar, below the status bar. The list scrolls underneath it. */
 private val BarHeight = 64.dp
+
+/** Below a pinned bar, the band where its veil fades out. Above it the veil is opaque. */
+internal val BarFade = 16.dp
+
+/** A pinned bar's veil: [color] at [alpha] down to [solidUntil] (a fraction of the height), then transparent. */
+internal fun barVeil(color: Color, alpha: Float, solidUntil: Float) = Brush.verticalGradient(
+    0f to color.copy(alpha = alpha),
+    solidUntil.coerceIn(0f, 1f) to color.copy(alpha = alpha),
+    1f to color.copy(alpha = 0f),
+)
 
 /**
  * Home and provider detail share one screen: a card grows into its detail (container
@@ -103,9 +114,18 @@ fun HomeScreen(
         }
     }
 
+    // Above the transition: the list keeps its position while a detail is open, so the card it
+    // opened from is still composed when back plays the container transform in reverse.
+    val listState = rememberLazyListState()
+
     SharedTransitionLayout(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         transition.AnimatedContent(
-            transitionSpec = { fadeIn(tween(220, delayMillis = 90)) togetherWith fadeOut(tween(90)) },
+            transitionSpec = {
+                // Back to the list is what predictive back scrubs: linear and undelayed, so the
+                // preview follows the finger instead of dropping the detail in the first third.
+                if (targetState == null) fadeIn(SharedKeys.BackFade) togetherWith fadeOut(SharedKeys.BackFade)
+                else fadeIn(tween(220, delayMillis = 90)) togetherWith fadeOut(tween(90))
+            },
         ) { name ->
             val entry = name?.let { n -> providers.firstOrNull { it.first == n } }
             if (entry == null) {
@@ -113,7 +133,7 @@ fun HomeScreen(
                     snapshot = snapshot, nowMillis = nowMillis, refreshing = refreshing, error = error,
                     stale = stale, now = now, demo = demo, mode = mode, onModeChange = onModeChange,
                     onRefresh = onRefresh, onUnpair = { confirmUnpair = true },
-                    onOpen = { openName = it },
+                    onOpen = { openName = it }, listState = listState,
                     sharedScope = this@SharedTransitionLayout, visibilityScope = this,
                 )
             } else {
@@ -136,13 +156,13 @@ private fun Overview(
     stale: Boolean, now: Instant, demo: Boolean,
     mode: DisplayMode, onModeChange: (DisplayMode) -> Unit,
     onRefresh: () -> Unit, onUnpair: () -> Unit, onOpen: (String) -> Unit,
+    listState: LazyListState,
     sharedScope: SharedTransitionScope, visibilityScope: AnimatedVisibilityScope,
 ) {
     // Edge to edge: the list runs under the status and navigation bars, padded by their insets.
     val safe = WindowInsets.safeDrawing.asPaddingValues()
     val direction = LocalLayoutDirection.current
     val top = safe.calculateTopPadding() + BarHeight
-    val listState = rememberLazyListState()
     val scrolled by remember { derivedStateOf { listState.canScrollBackward } }
     val pullState = rememberPullToRefreshState()
 
@@ -162,6 +182,7 @@ private fun Overview(
                     Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(PaddingValues(
                         start = safe.calculateStartPadding(direction) + 20.dp, top = top,
                         end = safe.calculateEndPadding(direction) + 20.dp,
+                        bottom = safe.calculateBottomPadding() + 24.dp,
                     )),
                 ) {
                     // Nothing to switch between until there is a payload, and the write would fail.
@@ -226,8 +247,8 @@ private fun Overview(
 }
 
 /**
- * Pinned, transparent at rest. Once the list scrolls under it, a gradient from the background
- * to transparent fades in behind it — no flat fill, no elevation, the cards dissolve upward.
+ * Pinned, transparent at rest. Once the list scrolls under it, a veil of the background fades in
+ * behind it: opaque behind the row, then fading out just below — no elevation, the cards dissolve upward.
  */
 @Composable
 private fun TopBar(
@@ -239,15 +260,9 @@ private fun TopBar(
     Box(
         modifier
             .fillMaxWidth()
-            .drawBehind {
-                drawRect(Brush.verticalGradient(
-                    0f to background.copy(alpha = scrim),
-                    .7f to background.copy(alpha = scrim * .9f),
-                    1f to background.copy(alpha = 0f),
-                ))
-            }
+            .drawBehind { drawRect(barVeil(background, scrim, solidUntil = 1f - BarFade.toPx() / size.height)) }
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-            .padding(bottom = 16.dp),
+            .padding(bottom = BarFade),
     ) {
         Row(
             Modifier.fillMaxWidth().height(BarHeight).padding(start = 24.dp, end = 16.dp),
@@ -363,6 +378,7 @@ private fun ProviderCard(
             .fillMaxWidth()
             .semantics { onClick(label = "Show every $name limit", action = null) }
             .sharedBounds(rememberSharedContentState(SharedKeys.container(name)), visibilityScope,
+                enter = fadeIn(SharedKeys.BackFade),
                 resizeMode = SharedKeys.ContainerResize,
                 clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(24.dp)))) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -381,10 +397,14 @@ private fun ProviderCard(
                         Text(name, style = MaterialTheme.typography.titleMedium)
                     }
                     val subtitle = providerSubtitle(name, provider.plan)
+                    // Shared too, so the detail's copies grow out of these instead of fading in elsewhere.
                     if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.sharedBounds(rememberSharedContentState(SharedKeys.subtitle(name)),
+                            visibilityScope, resizeMode = SharedKeys.TextResize))
                     if (hero != null) {
-                        Text(hero.glanceLabel(), style = MaterialTheme.typography.titleMedium)
+                        Text(hero.glanceLabel(), style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.sharedElement(rememberSharedContentState(SharedKeys.heroLabel(name)), visibilityScope))
                         Text(formatResetsIn(hero.resetsIn(now)), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         SeverityPill(if (stale) Severity.STALE else hero.severity)
@@ -403,16 +423,16 @@ private fun ProviderCard(
 }
 
 @Composable
-internal fun NoData(provider: Provider) {
+internal fun NoData(provider: Provider, textAlign: TextAlign = TextAlign.Start) {
     Text("No data", style = MaterialTheme.typography.titleMedium)
     Text(if (provider.extra.containsKey("error")) "Couldn’t read this provider. Check its connection on your Mac." else "Waiting for a usage reading from your Mac.",
-        style = MaterialTheme.typography.bodyMedium,
+        style = MaterialTheme.typography.bodyMedium, textAlign = textAlign,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @Composable
 private fun ErrorState(message: String, onRetry: () -> Unit, onPairAgain: () -> Unit) {
-    Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
         Card(shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally,
