@@ -54,6 +54,10 @@ provider, number of windows, or available capacity.
 | > 85 | Nearly empty | `#EF4444` |
 | Stale | Out of date | `#6B7280` |
 
+These colours draw arcs and dots. Written as words on a light surface, a state takes a darker
+shade of its hue that keeps at least 4.5:1 (Running low is `#92400E`); dark surfaces keep the
+colour above.
+
 Durations are identical on every surface: **Resets in 37 min**, **Resets in 2 h 10 min**,
 **Resets in 2 d 14 h**. Round positive time up to whole minutes; at a day or more show days
 and whole remaining hours. Keep both units, including zero lower units. A past reset is
