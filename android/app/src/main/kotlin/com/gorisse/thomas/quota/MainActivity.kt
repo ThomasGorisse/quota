@@ -4,6 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,30 +45,39 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = androidx.compose.material3.MaterialTheme.colorScheme.background,
                 ) {
-                    val insets = Modifier
-                        .fillMaxSize()
-                        .windowInsetsPadding(WindowInsets.systemBars)
-                        .consumeWindowInsets(WindowInsets.systemBars)
-                    if (paired) {
-                        HomeScreen(
-                            snapshot = snapshot,
-                            demo = viewModel.isDemo,
-                            nowMillis = now,
-                            refreshing = refreshing,
-                            error = error,
-                            onRefresh = viewModel::refresh,
-                            onUnpair = viewModel::unpair,
-                            mode = displayMode,
-                            onModeChange = viewModel::setDisplayMode,
-                            modifier = insets,
-                        )
-                    } else {
-                        PairingScreen(
-                            pairingError = error,
-                            onPaired = viewModel::pair,
-                            onDemoData = viewModel::enableDemoData,
-                            modifier = insets,
-                        )
+                    // Material fade through: pairing and home are siblings, not a stack.
+                    AnimatedContent(
+                        targetState = paired,
+                        transitionSpec = {
+                            (fadeIn(tween(210, delayMillis = 90)) + scaleIn(tween(210, delayMillis = 90), initialScale = .92f)) togetherWith
+                                fadeOut(tween(90))
+                        },
+                        label = "paired",
+                    ) { isPaired ->
+                        if (isPaired) {
+                            // Edge to edge: home pads its own content with the window insets.
+                            HomeScreen(
+                                snapshot = snapshot,
+                                demo = viewModel.isDemo,
+                                nowMillis = now,
+                                refreshing = refreshing,
+                                error = error,
+                                onRefresh = viewModel::refresh,
+                                onUnpair = viewModel::unpair,
+                                mode = displayMode,
+                                onModeChange = viewModel::setDisplayMode,
+                            )
+                        } else {
+                            PairingScreen(
+                                pairingError = error,
+                                onPaired = viewModel::pair,
+                                onDemoData = viewModel::enableDemoData,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .windowInsetsPadding(WindowInsets.systemBars)
+                                    .consumeWindowInsets(WindowInsets.systemBars),
+                            )
+                        }
                     }
                 }
             }

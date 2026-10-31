@@ -1,10 +1,27 @@
 package com.gorisse.thomas.quota.ui
 
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.SharedTransitionScope.OverlayClip
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.SeekableTransitionState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -13,12 +30,19 @@ import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -26,8 +50,18 @@ import com.gorisse.thomas.quota.data.*
 import com.gorisse.thomas.quota.data.DisplayMode
 import com.gorisse.thomas.quota.ui.theme.*
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Height of the pinned bar, below the status bar. The list scrolls underneath it. */
+private val BarHeight = 64.dp
+
+/**
+ * Home and provider detail share one screen: a card grows into its detail (container
+ * transform) and predictive back scrubs that same transition, so the gesture previews exactly
+ * where it lands. Only the arc animates its value; this motion is navigation, never data.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun HomeScreen(
     snapshot: Snapshot?, nowMillis: Long, refreshing: Boolean, error: String?,
@@ -46,24 +80,113 @@ fun HomeScreen(
             confirmButton = { TextButton(onClick = { confirmUnpair = false; onUnpair() }) { Text(if (demo) "Leave sample data" else "Disconnect") } },
             dismissButton = { TextButton(onClick = { confirmUnpair = false }) { Text("Cancel") } })
     }
-    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Header(
-            snapshot?.let { "Updated " + formatAge(it.ageSeconds(nowMillis)) } ?: "Waiting for first update",
-            demo, onUnpair = { confirmUnpair = true }, mode = mode, onModeChange = onModeChange,
-            // Nothing to switch between until there is a payload, and the write would fail.
-            showToggle = snapshot != null, onRefresh = onRefresh, refreshing = refreshing)
-        PullToRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, modifier = Modifier.weight(1f)) {
+
+    val providers = snapshot?.orderedProviders().orEmpty()
+    var openName by rememberSaveable { mutableStateOf<String?>(null) }
+    val navigation = remember { SeekableTransitionState(openName) }
+    val transition = rememberTransition(navigation, label = "provider")
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(openName) { navigation.animateTo(openName) }
+    // A provider can leave the payload while its detail is open; go back to the list then.
+    LaunchedEffect(openName, providers) {
+        if (openName != null && providers.none { it.first == openName }) openName = null
+    }
+    PredictiveBackHandler(enabled = openName != null) { progress ->
+        try {
+            progress.collect { navigation.seekTo(it.progress, targetState = null) }
+            openName = null
+            navigation.animateTo(null)
+        } catch (e: CancellationException) {
+            scope.launch { navigation.animateTo(navigation.currentState) }
+        }
+    }
+
+    SharedTransitionLayout(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        transition.AnimatedContent(
+            transitionSpec = { fadeIn(tween(220, delayMillis = 90)) togetherWith fadeOut(tween(90)) },
+        ) { name ->
+            val entry = name?.let { n -> providers.firstOrNull { it.first == n } }
+            if (entry == null) {
+                Overview(
+                    snapshot = snapshot, nowMillis = nowMillis, refreshing = refreshing, error = error,
+                    stale = stale, now = now, demo = demo, mode = mode, onModeChange = onModeChange,
+                    onRefresh = onRefresh, onUnpair = { confirmUnpair = true },
+                    onOpen = { openName = it },
+                    sharedScope = this@SharedTransitionLayout, visibilityScope = this,
+                )
+            } else {
+                val (detailName, provider) = entry
+                ProviderDetail(
+                    name = detailName, provider = provider,
+                    stale = stale || provider.isStaleAt(nowMillis), now = now, mode = mode,
+                    onBack = { openName = null },
+                    sharedScope = this@SharedTransitionLayout, visibilityScope = this,
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
+@Composable
+private fun Overview(
+    snapshot: Snapshot?, nowMillis: Long, refreshing: Boolean, error: String?,
+    stale: Boolean, now: Instant, demo: Boolean,
+    mode: DisplayMode, onModeChange: (DisplayMode) -> Unit,
+    onRefresh: () -> Unit, onUnpair: () -> Unit, onOpen: (String) -> Unit,
+    sharedScope: SharedTransitionScope, visibilityScope: AnimatedVisibilityScope,
+) {
+    // Edge to edge: the list runs under the status and navigation bars, padded by their insets.
+    val safe = WindowInsets.safeDrawing.asPaddingValues()
+    val direction = LocalLayoutDirection.current
+    val top = safe.calculateTopPadding() + BarHeight
+    val listState = rememberLazyListState()
+    val scrolled by remember { derivedStateOf { listState.canScrollBackward } }
+    val pullState = rememberPullToRefreshState()
+
+    Box(Modifier.fillMaxSize()) {
+        PullToRefreshBox(
+            isRefreshing = refreshing, onRefresh = onRefresh, state = pullState,
+            modifier = Modifier.fillMaxSize(),
+            indicator = {
+                PullToRefreshDefaults.Indicator(
+                    state = pullState, isRefreshing = refreshing,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = top),
+                )
+            },
+        ) {
             when {
-                snapshot == null && error != null -> ErrorState(error, onRefresh, onUnpair)
-                snapshot == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    if (refreshing) CircularProgressIndicator(Modifier.size(32.dp))
-                    else Text("Pull down to load your limits", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                snapshot == null -> Column(
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(PaddingValues(
+                        start = safe.calculateStartPadding(direction) + 20.dp, top = top,
+                        end = safe.calculateEndPadding(direction) + 20.dp,
+                    )),
+                ) {
+                    // Nothing to switch between until there is a payload, and the write would fail.
+                    Header("Waiting for first update", demo, mode, onModeChange, showToggle = false)
+                    if (error != null) ErrorState(error, onRefresh, onUnpair)
+                    else Box(Modifier.fillMaxWidth().padding(vertical = 160.dp), contentAlignment = Alignment.Center) {
+                        if (refreshing) CircularProgressIndicator(Modifier.size(32.dp))
+                        else Text("Pull down to load your limits", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
                 else -> LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
+                    contentPadding = PaddingValues(
+                        start = safe.calculateStartPadding(direction) + 20.dp,
+                        top = top,
+                        end = safe.calculateEndPadding(direction) + 20.dp,
+                        bottom = safe.calculateBottomPadding() + 24.dp,
+                    ),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
+                    item {
+                        Header(
+                            "Updated " + formatAge(snapshot.ageSeconds(nowMillis)),
+                            demo, mode = mode, onModeChange = onModeChange,
+                        )
+                    }
                     if (error != null) item {
                         Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(12.dp)) {
                             Text("Couldn't refresh. Showing your last update.", Modifier.padding(16.dp),
@@ -80,10 +203,11 @@ fun HomeScreen(
                         }
                     }
                     items(snapshot.orderedProviders(), key = { it.first }) { (name, provider) ->
-                        ProviderCard(name, provider, stale || provider.isStaleAt(nowMillis), now, mode)
+                        ProviderCard(name, provider, stale || provider.isStaleAt(nowMillis), now, mode,
+                            onOpen = { onOpen(name) }, sharedScope = sharedScope, visibilityScope = visibilityScope)
                     }
                     item {
-                        Text("The most-used limit leads each card. Pull down to refresh.",
+                        Text("The most-used limit leads each card. Tap one for every limit.",
                             Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -91,20 +215,42 @@ fun HomeScreen(
                 }
             }
         }
+        TopBar(
+            demo = demo, scrolled = scrolled, refreshing = refreshing,
+            onRefresh = onRefresh, onUnpair = onUnpair,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 }
 
+/**
+ * Pinned, transparent at rest. Once the list scrolls under it, a gradient from the background
+ * to transparent fades in behind it — no flat fill, no elevation, the cards dissolve upward.
+ */
 @Composable
-private fun Header(
-    ageLabel: String, demo: Boolean, onUnpair: () -> Unit,
-    mode: DisplayMode, onModeChange: (DisplayMode) -> Unit, showToggle: Boolean,
-    onRefresh: () -> Unit, refreshing: Boolean,
+private fun TopBar(
+    demo: Boolean, scrolled: Boolean, refreshing: Boolean,
+    onRefresh: () -> Unit, onUnpair: () -> Unit, modifier: Modifier = Modifier,
 ) {
-    Column(
-        Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp, top = 12.dp, bottom = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+    val background = MaterialTheme.colorScheme.background
+    val scrim by animateFloatAsState(if (scrolled) 1f else 0f, tween(200), label = "bar-scrim")
+    Box(
+        modifier
+            .fillMaxWidth()
+            .drawBehind {
+                drawRect(Brush.verticalGradient(
+                    0f to background.copy(alpha = scrim),
+                    .7f to background.copy(alpha = scrim * .9f),
+                    1f to background.copy(alpha = 0f),
+                ))
+            }
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+            .padding(bottom = 16.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth().height(BarHeight).padding(start = 24.dp, end = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             QuotaWordmark(Modifier.weight(1f))
             if (demo) SampleDataChip(Modifier.padding(end = 8.dp))
             IconButton(onClick = onRefresh, enabled = !refreshing) {
@@ -115,8 +261,20 @@ private fun Header(
                     Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+    }
+}
+
+@Composable
+private fun Header(
+    ageLabel: String, demo: Boolean,
+    mode: DisplayMode, onModeChange: (DisplayMode) -> Unit, showToggle: Boolean = true,
+) {
+    Column(
+        Modifier.fillMaxWidth().padding(start = 4.dp, bottom = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         Text("Your capacity", style = MaterialTheme.typography.headlineLarge)
-        Row(Modifier.fillMaxWidth().padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(if (demo) "A preview of your day" else ageLabel, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (showToggle) DisplayToggle(mode, onModeChange)
@@ -176,7 +334,7 @@ private fun SampleDataChip(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun SeverityPill(severity: Severity) {
+internal fun SeverityPill(severity: Severity) {
     val ink = severity.textColor()
     Row(verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(severity.color.copy(alpha = .12f))
@@ -186,35 +344,36 @@ private fun SeverityPill(severity: Severity) {
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun ProviderCard(
     name: String, provider: Provider, stale: Boolean, now: Instant,
-    mode: DisplayMode,
-) {
+    mode: DisplayMode, onOpen: () -> Unit,
+    sharedScope: SharedTransitionScope, visibilityScope: AnimatedVisibilityScope,
+) = with(sharedScope) {
     val windows = provider.glanceWindows()
     val hero = windows.firstOrNull()
-    var expanded by remember(name) { mutableStateOf(false) }
-    Card(shape = RoundedCornerShape(24.dp),
+    Card(onClick = onOpen,
+        shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .55f)),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth()) {
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { onClick(label = "Show every $name limit", action = null) }
+            .sharedBounds(rememberSharedContentState(SharedKeys.container(name)), visibilityScope,
+                clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(24.dp)))) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (hero != null) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        RingGauge(hero, stale, diameter = 112.dp, resetsIn = hero.resetsIn(now),
-                            showDetails = false, mode = mode)
-                        if (windows.size > 1) {
-                            TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) {
-                                Text(if (expanded) "Hide details" else "Details")
-                            }
-                        }
-                    }
+                    RingGauge(hero, stale, diameter = 112.dp, resetsIn = hero.resetsIn(now),
+                        showDetails = false, mode = mode,
+                        modifier = Modifier.sharedElement(rememberSharedContentState(SharedKeys.ring(name)), visibilityScope))
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.sharedBounds(rememberSharedContentState(SharedKeys.title(name)), visibilityScope)) {
                         ProviderMark(ProviderId.of(name.lowercase()), stale = stale)
                         Text(name, style = MaterialTheme.typography.titleMedium)
                     }
@@ -232,26 +391,20 @@ private fun ProviderCard(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     } else {
-                        Text("No data", style = MaterialTheme.typography.titleMedium)
-                        Text(if (provider.extra.containsKey("error")) "Couldn’t read this provider. Check its connection on your Mac." else "Waiting for a usage reading from your Mac.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-            if (expanded && windows.size > 1) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
-                windows.drop(1).forEach { window ->
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("${window.glanceLabel()} ${window.shown(mode)}% ${if (mode.isUsed) "used" else "left"}",
-                            style = MaterialTheme.typography.labelLarge)
-                        Text(formatResetsIn(window.resetsIn(now)), style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        NoData(provider)
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+internal fun NoData(provider: Provider) {
+    Text("No data", style = MaterialTheme.typography.titleMedium)
+    Text(if (provider.extra.containsKey("error")) "Couldn’t read this provider. Check its connection on your Mac." else "Waiting for a usage reading from your Mac.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @Composable
