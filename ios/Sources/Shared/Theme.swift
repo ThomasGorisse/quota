@@ -47,8 +47,9 @@ enum QuotaTheme {
 
     /// Severity as words ("Running low"). The tokens above are for arcs and dots; as text on a
     /// light surface they fall to 2:1, so light takes a darker shade of the same hue that clears
-    /// 4.5:1 on white and on the pill's tint, and dark keeps the token. Android's
-    /// `Severity.textColor()` does the same.
+    /// 4.5:1 on white and on the pill's tint. Dark keeps the token where it already clears 4.5:1
+    /// on the card, the background and the pill, and takes a lighter shade where it does not.
+    /// Android's `Severity.textColor()` uses the same shades.
     static func ink(for severity: Severity) -> Color {
         switch severity {
         case .ok: return okInk
@@ -60,8 +61,8 @@ enum QuotaTheme {
 
     private static let okInk = ink(light: 0x166534, dark: ok)
     private static let warnInk = ink(light: 0x92400E, dark: warn)
-    private static let criticalInk = ink(light: 0xB91C1C, dark: critical)
-    private static let staleInk = ink(light: 0x4B5563, dark: stale)
+    private static let criticalInk = ink(light: 0xB91C1C, dark: Color(hex: 0xF87171))
+    private static let staleInk = ink(light: 0x4B5563, dark: Color(hex: 0x9CA3AF))
 
     private static func ink(light: UInt32, dark: Color) -> Color {
         #if os(watchOS)
