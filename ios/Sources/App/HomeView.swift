@@ -49,7 +49,14 @@ struct HomeView: View {
         let arguments = ProcessInfo.processInfo.arguments
         if let index = arguments.firstIndex(of: "-QuotaProvider"), index + 1 < arguments.count {
             path = [arguments[index + 1]]
-        } else if arguments.contains("-QuotaTour"), let first = model.snapshot?.orderedProviders().first?.name {
+        } else if arguments.contains("-QuotaTour") {
+            // The snapshot loads after launch, so wait for the first card before touring.
+            var first: String?
+            for await snapshot in model.$snapshot.values {
+                first = snapshot?.orderedProviders().first?.name
+                if first != nil { break }
+            }
+            guard let first else { return }
             for _ in 0..<2 {
                 try? await Task.sleep(for: .seconds(2))
                 path = [first]
@@ -207,7 +214,7 @@ struct ProviderDetailView: View {
                           mode: model.displayMode, diameter: 168)
                 Text(stale ? "Out of date" : hero.severity.label)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(QuotaTheme.color(for: stale ? .stale : hero.severity))
+                    .foregroundStyle(QuotaTheme.ink(for: stale ? .stale : hero.severity))
             } else {
                 Text("No data").foregroundStyle(palette.textSecondary)
             }
@@ -266,6 +273,7 @@ private extension View {
         }
     }
 
+    /// With Reduce Motion on, the system plays this zoom as a cross-fade.
     @ViewBuilder
     func zoomTransition(from id: String, in namespace: Namespace.ID) -> some View {
         if #available(iOS 18, *) {

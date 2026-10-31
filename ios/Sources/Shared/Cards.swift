@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The header pill: a dot in the severity colour, the word, and a tint of the same colour
-/// behind it. "STALE" is a severity like the others here — grey, and it wins over the value.
+/// The header pill: a dot in the severity colour, the word in its ink, and a tint of the same
+/// colour behind it. "STALE" is a severity like the others here — grey, and it wins over the value.
 struct SeverityPill: View {
     let severity: Severity
     var compact: Bool = false
@@ -16,7 +16,7 @@ struct SeverityPill: View {
                 .frame(width: compact ? 6 : 8, height: compact ? 6 : 8)
             Text(text)
                 .font(compact ? .system(size: 12, weight: .semibold) : .system(size: 16, weight: .semibold))
-                .foregroundStyle(color)
+                .foregroundStyle(QuotaTheme.ink(for: severity))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
@@ -178,7 +178,7 @@ struct ProviderCard: View {
                     identity
                     Text(stale ? "Out of date" : hero.severity.label)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(QuotaTheme.color(for: stale ? .stale : hero.severity))
+                        .foregroundStyle(QuotaTheme.ink(for: stale ? .stale : hero.severity))
                     Text(hero.displayLabel)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(palette.textPrimary)
