@@ -5,6 +5,14 @@ struct QuotaApp: App {
     @StateObject private var model = StatusViewModel()
     @Environment(\.scenePhase) private var scenePhase
 
+    init() {
+        // The large title keeps the rounded face the hand-drawn "Quota" title had.
+        let base = UIFont.preferredFont(forTextStyle: .largeTitle)
+        if let rounded = base.fontDescriptor.withDesign(.rounded)?.withSymbolicTraits(.traitBold) {
+            UINavigationBar.appearance().largeTitleTextAttributes = [.font: UIFont(descriptor: rounded, size: 0)]
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -31,6 +39,7 @@ struct QuotaApp: App {
 struct RootView: View {
     @EnvironmentObject private var model: StatusViewModel
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -41,14 +50,15 @@ struct RootView: View {
                 WidgetPreviewView(snapshot: model.snapshot ?? DemoData.snapshot(),
                                   only: LaunchOptions.widgetOnly)
             } else if model.isPaired || model.demoData {
-                HomeView()
+                HomeView().transition(.opacity)
             } else {
-                PairingView()
+                PairingView().transition(.opacity)
             }
         }
         .quotaPalette(scheme)
         // System controls take a product colour rather than the iOS blue.
         .tint(QuotaTheme.codex)
-        .animation(nil, value: model.isPaired)
+        // Pairing hands over to Home with a short cross-fade, the way Android fades through.
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: model.isPaired || model.demoData)
     }
 }
