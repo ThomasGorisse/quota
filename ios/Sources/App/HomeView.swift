@@ -5,10 +5,11 @@ import SwiftUI
 /// The screen sits in a navigation stack so the title is the system large title, folding into the
 /// bar as the cards scroll under it. The bar never takes a flat fill: the page runs edge to edge
 /// and the system's scroll-edge treatment is the only thing behind the title. A card opens its
-/// provider's detail by zooming out of itself (iOS 18; a plain push before).
+/// provider's detail by zooming out of itself (iOS 18; a plain push before, and with Reduce Motion).
 struct HomeView: View {
     @EnvironmentObject private var model: StatusViewModel
     @Environment(\.palette) private var palette
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showsSettings = false
     @State private var path: [String] = []
     @Namespace private var cards
@@ -34,7 +35,7 @@ struct HomeView: View {
             }
             .navigationDestination(for: String.self) { name in
                 ProviderDetailView(name: name)
-                    .zoomTransition(from: name, in: cards)
+                    .zoomTransition(from: reduceMotion ? nil : name, in: cards)
             }
         }
         #if DEBUG
@@ -49,7 +50,10 @@ struct HomeView: View {
         let arguments = ProcessInfo.processInfo.arguments
         if let index = arguments.firstIndex(of: "-QuotaProvider"), index + 1 < arguments.count {
             path = [arguments[index + 1]]
-        } else if arguments.contains("-QuotaTour"), let first = model.snapshot?.orderedProviders().first?.name {
+        } else if arguments.contains("-QuotaTour") {
+            // The first snapshot lands after launch: wait for it, up to ten seconds.
+            for _ in 0..<40 where model.snapshot == nil { try? await Task.sleep(for: .milliseconds(250)) }
+            guard let first = model.snapshot?.orderedProviders().first?.name else { return }
             for _ in 0..<2 {
                 try? await Task.sleep(for: .seconds(2))
                 path = [first]
@@ -207,7 +211,7 @@ struct ProviderDetailView: View {
                           mode: model.displayMode, diameter: 168)
                 Text(stale ? "Out of date" : hero.severity.label)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(QuotaTheme.color(for: stale ? .stale : hero.severity))
+                    .foregroundStyle(QuotaTheme.textColor(for: stale ? .stale : hero.severity))
             } else {
                 Text("No data").foregroundStyle(palette.textSecondary)
             }
@@ -266,9 +270,10 @@ private extension View {
         }
     }
 
+    /// The detail's side of the zoom; no `id`, the system's push.
     @ViewBuilder
-    func zoomTransition(from id: String, in namespace: Namespace.ID) -> some View {
-        if #available(iOS 18, *) {
+    func zoomTransition(from id: String?, in namespace: Namespace.ID) -> some View {
+        if #available(iOS 18, *), let id {
             navigationTransition(.zoom(sourceID: id, in: namespace))
         } else {
             self

@@ -6,10 +6,13 @@ struct QuotaApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
-        // The large title keeps the rounded face the hand-drawn "Quota" title had.
-        let base = UIFont.preferredFont(forTextStyle: .largeTitle)
+        // The large title keeps the rounded face the hand-drawn "Quota" title had. It is built at
+        // the default text size and handed to `UIFontMetrics`, so the bar scales it with Dynamic
+        // Type, at launch and when the setting changes, like the system face.
+        let base = UIFont.preferredFont(forTextStyle: .largeTitle, compatibleWith: UITraitCollection(preferredContentSizeCategory: .large))
         if let rounded = base.fontDescriptor.withDesign(.rounded)?.withSymbolicTraits(.traitBold) {
-            UINavigationBar.appearance().largeTitleTextAttributes = [.font: UIFont(descriptor: rounded, size: 0)]
+            let font = UIFontMetrics(forTextStyle: .largeTitle).scaledFont(for: UIFont(descriptor: rounded, size: base.pointSize))
+            UINavigationBar.appearance().largeTitleTextAttributes = [.font: font]
         }
     }
 

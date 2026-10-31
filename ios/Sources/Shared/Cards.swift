@@ -16,7 +16,7 @@ struct SeverityPill: View {
                 .frame(width: compact ? 6 : 8, height: compact ? 6 : 8)
             Text(text)
                 .font(compact ? .system(size: 12, weight: .semibold) : .system(size: 16, weight: .semibold))
-                .foregroundStyle(color)
+                .foregroundStyle(QuotaTheme.textColor(for: severity))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
@@ -178,7 +178,7 @@ struct ProviderCard: View {
                     identity
                     Text(stale ? "Out of date" : hero.severity.label)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(QuotaTheme.color(for: stale ? .stale : hero.severity))
+                        .foregroundStyle(QuotaTheme.textColor(for: stale ? .stale : hero.severity))
                     Text(hero.displayLabel)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(palette.textPrimary)

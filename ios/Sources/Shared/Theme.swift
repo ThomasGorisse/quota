@@ -7,7 +7,7 @@ import UIKit
 /// amber and red on every surface, so none of these are system or accent colours.
 enum QuotaTheme {
 
-    // Severity — identical in light and dark.
+    // Severity — identical in light and dark. Text takes ``textColor(for:)``.
     static let ok = Color(hex: 0x22C55E)
     static let warn = Color(hex: 0xF59E0B)
     static let critical = Color(hex: 0xEF4444)
@@ -43,6 +43,27 @@ enum QuotaTheme {
         case .critical: return critical
         case .stale: return stale
         }
+    }
+
+    /// Severity as words. Amber and green at full strength fall under 4.5:1 on a white card
+    /// (#F59E0B is 2.1:1), so the light scheme takes a darker shade of the same hue; dark keeps
+    /// the swatches above. The same values as Android's `Severity.textColor()`. Rings, dots and
+    /// widgets keep ``color(for:)``.
+    static func textColor(for severity: Severity) -> Color {
+        #if os(watchOS)
+        return color(for: severity)
+        #else
+        let light: UInt32 = switch severity {
+        case .ok: 0x15803D
+        case .warn: 0x92400E
+        case .critical: 0xB91C1C
+        case .stale: 0x4B5563
+        }
+        let dark = UIColor(color(for: severity))
+        return Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark ? dark : UIColor(Color(hex: light))
+        })
+        #endif
     }
 
     static func accent(for providerName: String) -> Color {
