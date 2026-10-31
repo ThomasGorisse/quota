@@ -49,6 +49,7 @@ internal fun ProviderDetail(
         modifier = Modifier
             .fillMaxSize()
             .sharedBounds(rememberSharedContentState(SharedKeys.container(name)), visibilityScope,
+                resizeMode = SharedKeys.ContainerResize,
                 clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(corner))),
     ) {
         Column(
@@ -71,9 +72,10 @@ internal fun ProviderDetail(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.sharedBounds(rememberSharedContentState(SharedKeys.title(name)), visibilityScope)) {
+                    modifier = Modifier.sharedElement(rememberSharedContentState(SharedKeys.title(name)), visibilityScope)) {
                     ProviderMark(ProviderId.of(name.lowercase()), stale = stale)
-                    Text(name, style = MaterialTheme.typography.titleLarge)
+                    // Same style as the card: the title travels as one element, it does not resize.
+                    Text(name, style = MaterialTheme.typography.titleMedium)
                 }
                 val subtitle = providerSubtitle(name, provider.plan)
                 if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium,

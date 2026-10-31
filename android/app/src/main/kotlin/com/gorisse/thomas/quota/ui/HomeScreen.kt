@@ -94,10 +94,12 @@ fun HomeScreen(
     PredictiveBackHandler(enabled = openName != null) { progress ->
         try {
             progress.collect { navigation.seekTo(it.progress, targetState = null) }
+            // Closing disables this handler, which cancels this block: the catch below finishes the animation.
             openName = null
             navigation.animateTo(null)
         } catch (e: CancellationException) {
-            scope.launch { navigation.animateTo(navigation.currentState) }
+            // A cancelled gesture leaves openName set and settles back on the detail; a committed one settles on the list.
+            scope.launch { navigation.animateTo(openName) }
         }
     }
 
@@ -361,6 +363,7 @@ private fun ProviderCard(
             .fillMaxWidth()
             .semantics { onClick(label = "Show every $name limit", action = null) }
             .sharedBounds(rememberSharedContentState(SharedKeys.container(name)), visibilityScope,
+                resizeMode = SharedKeys.ContainerResize,
                 clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(24.dp)))) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically,
@@ -373,7 +376,7 @@ private fun ProviderCard(
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.sharedBounds(rememberSharedContentState(SharedKeys.title(name)), visibilityScope)) {
+                        modifier = Modifier.sharedElement(rememberSharedContentState(SharedKeys.title(name)), visibilityScope)) {
                         ProviderMark(ProviderId.of(name.lowercase()), stale = stale)
                         Text(name, style = MaterialTheme.typography.titleMedium)
                     }
