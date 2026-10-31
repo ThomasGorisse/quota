@@ -101,10 +101,17 @@ fun ProviderId.accentBrush(alpha: Float): androidx.compose.ui.graphics.Brush =
         androidx.compose.ui.graphics.SolidColor(accent().copy(alpha = alpha))
     }
 
-/** Keep the semantic hues, with accessible text contrast on white. */
+/**
+ * Keep the semantic hues, with at least 4.5:1 text contrast on the surfaces and on the pill's
+ * tint: darker shades in light, and in dark the token unless it falls short. Same shades as iOS.
+ */
 @androidx.compose.runtime.Composable
-fun Severity.textColor(): Color = if (androidx.compose.foundation.isSystemInDarkTheme()) color else when (this) {
-    Severity.OK -> Color(0xFF15803D)
+fun Severity.textColor(): Color = if (androidx.compose.foundation.isSystemInDarkTheme()) when (this) {
+    Severity.OK, Severity.WARN -> color
+    Severity.CRITICAL -> Color(0xFFF87171)
+    Severity.STALE -> Color(0xFF9CA3AF)
+} else when (this) {
+    Severity.OK -> Color(0xFF166534)
     Severity.WARN -> Color(0xFF92400E)
     Severity.CRITICAL -> Color(0xFFB91C1C)
     Severity.STALE -> Color(0xFF4B5563)
