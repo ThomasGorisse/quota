@@ -1,0 +1,1 @@
+在主屏幕查看 Claude、Codex 和 Gemini 的用量上限：剩余多少，或已用多少。

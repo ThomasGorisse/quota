@@ -1,0 +1,27 @@
+Weet hoeveel AI-capaciteit je hebt voordat je begint.
+
+Quota brengt de gebruikslimieten van Claude, Codex en Gemini samen in een rustig, overzichtelijk dashboard. Per aanbieder toont een ring de limiet die het dichtst bij nul zit, met de naam van het tijdvenster en het resetmoment ernaast. De overige limieten zijn één tik of blik verwijderd.
+
+JE CAPACITEIT, HELDER IN BEELD
+• Wissel tussen resterende capaciteit en verbruik. Je voorkeur wordt gesynchroniseerd op je gekoppelde schermen.
+• Bekijk sessie-, week-, reserve- en modellimieten als je aanbieder die doorgeeft.
+• Lees resettijden in gewone taal.
+• Herken oude metingen: waarden worden grijs zodra ze verouderd zijn, ook als een andere aanbieder al is ververst.
+• Probeer voorbeeldgegevens uit voordat je iets instelt. Je hoeft niet in te loggen om rond te kijken.
+
+OP JE STARTSCHERM
+Voeg compacte of grote widgets toe om je capaciteit in beeld te houden zonder de app te openen. De lichte en donkere weergave passen bij je telefoon.
+
+KOPPEL JE MAC
+Voor live metingen installeer je de gratis Quota-collector op de Mac waarop je Claude Code, Codex of Gemini CLI gebruikt. Die gebruikt je bestaande aanmelding bij de aanbieder om daar de gebruikslimieten op te vragen. Koppel de app door de koppelingslink van je Mac te plakken. Houd de Mac online voor actuele metingen; het besturingssysteem plant het verversen van widgets op de achtergrond.
+
+Installatie en download van de collector: https://quota.sceneview.dev/setup.html
+
+PRIVACY BY DESIGN
+Geen advertenties, analytics of tracking. Je inloggegevens voor de aanbieder blijven op je Mac en worden alleen gebruikt om je aan te melden bij die aanbieder. De relay ontvangt gebruikspercentages, resettijden, abonnementsnamen en een willekeurige koppelings-ID, nooit prompts, broncode of inloggegevens voor aanbieders. Je kunt de gehoste relay gebruiken of je eigen relay instellen.
+
+Ontkoppelen verwijdert de koppeling van dit apparaat. Gehoste momentopnamen verlopen zeven dagen na de laatste verzameling; de geschiedenis verloopt na 24 uur. Wil je het verzamelen stoppen, verwijder dan de Mac-collector volgens de installatie-instructies.
+
+Quota is gratis en heeft geen in-app-aankopen. Het is een onafhankelijke tool, niet gelieerd aan Anthropic, OpenAI of Google. Welke aanbieders beschikbaar zijn, hangt af van je account en van de gegevens die elke aanbieder vrijgeeft. De app is in het Engels.
+
+Quota wordt niet onderschreven of gesponsord door Anthropic, OpenAI of Google. Alle handelsmerken zijn eigendom van hun respectieve eigenaren.

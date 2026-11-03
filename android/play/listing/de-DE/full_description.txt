@@ -1,0 +1,27 @@
+Wissen, wie viel KI-Kapazität bleibt, bevor Sie loslegen.
+
+Quota bündelt die Nutzungslimits von Claude, Codex und Gemini in einem ruhigen, übersichtlichen Dashboard. Ein Ring pro Anbieter hebt das Limit hervor, das am knappsten ist, daneben stehen der Name des Zeitfensters und der Zeitpunkt des Zurücksetzens. Die übrigen Limits sind nur einen Tipp oder Blick entfernt.
+
+IHRE KAPAZITÄT, KLAR DARGESTELLT
+• Wechseln Sie zwischen verbleibender Kapazität und bisherigem Verbrauch. Ihre Einstellung wird auf Ihren verbundenen Bildschirmen synchronisiert.
+• Sehen Sie Sitzungs-, Wochen-, Reserve- und Modelllimits, sofern Ihr Anbieter sie meldet.
+• Lesen Sie Rücksetzzeiten in verständlichen Worten.
+• Erkennen Sie veraltete Werte: Sie werden grau, sobald sie nicht mehr aktuell sind, auch wenn ein anderer Anbieter bereits aktualisiert wurde.
+• Probieren Sie Beispieldaten aus, bevor Sie etwas einrichten. Zum Erkunden ist keine Anmeldung nötig.
+
+AUF IHREM STARTBILDSCHIRM
+Fügen Sie kompakte oder große Widgets hinzu, um Ihre Kapazität im Blick zu behalten, ohne die App zu öffnen. Helle und dunkle Darstellung passen sich Ihrem Smartphone an.
+
+IHREN MAC VERBINDEN
+Für Live-Werte installieren Sie den kostenlosen Quota-Collector auf dem Mac, auf dem Sie Claude Code, Codex oder Gemini CLI nutzen. Er verwendet Ihre bestehende Anmeldung beim Anbieter, um dort die Nutzungslimits abzufragen. Koppeln Sie die App, indem Sie den Kopplungslink von Ihrem Mac einfügen. Lassen Sie den Mac online, damit die Werte aktuell bleiben; die Aktualisierung der Widgets im Hintergrund plant das Betriebssystem.
+
+Einrichtung und Download des Collectors: https://quota.sceneview.dev/setup.html
+
+DATENSCHUTZ VON GRUND AUF
+Keine Werbung, keine Analysen, kein Tracking. Ihre Zugangsdaten für den Anbieter bleiben auf Ihrem Mac und dienen ausschließlich der Anmeldung beim jeweiligen Anbieter. Das Relay empfängt Nutzungsprozente, Rücksetzzeiten, Tarifbezeichnungen und eine zufällige Kopplungs-ID, niemals Prompts, Quellcode oder Zugangsdaten für Anbieter. Sie können das gehostete Relay nutzen oder ein eigenes einrichten.
+
+Beim Trennen wird die Kopplung von diesem Gerät entfernt. Gehostete Momentaufnahmen verfallen sieben Tage nach der letzten Erfassung, der Verlauf nach 24 Stunden. Um die Erfassung zu beenden, deinstallieren Sie den Mac-Collector gemäß der Einrichtungsanleitung.
+
+Quota ist kostenlos und bietet keine In-App-Käufe. Es ist ein unabhängiges Tool und steht in keiner Verbindung zu Anthropic, OpenAI oder Google. Welche Anbieter verfügbar sind, hängt von Ihrem Konto und den Daten ab, die der jeweilige Anbieter bereitstellt. Die App ist auf Englisch.
+
+Quota wird von Anthropic, OpenAI oder Google weder empfohlen noch gesponsert. Alle Marken gehören ihren jeweiligen Inhabern.

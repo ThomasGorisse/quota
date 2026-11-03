@@ -1,0 +1,27 @@
+Saiba quanto de IA você ainda tem antes de começar.
+
+O Quota reúne os limites de uso do Claude, Codex e Gemini em um painel claro e tranquilo. Um anel por provedor destaca o limite mais perto de acabar, com o nome da janela e o horário de redefinição ao lado. Os outros limites ficam a um toque ou um olhar de distância.
+
+SUA CAPACIDADE, COM CLAREZA
+• Alterne entre a capacidade restante e o uso consumido. Sua preferência é sincronizada entre as telas conectadas.
+• Veja limites de sessão, semanais, de reserva e por modelo quando o provedor os informa.
+• Leia os horários de redefinição em linguagem simples.
+• Reconheça leituras antigas: os valores ficam cinza quando estão desatualizados, mesmo que outro provedor já tenha sido atualizado.
+• Teste com dados de exemplo antes de configurar qualquer coisa. Não é preciso fazer login para explorar.
+
+NA SUA TELA INICIAL
+Adicione widgets compactos ou grandes para manter sua capacidade à vista sem abrir o app. Os temas claro e escuro combinam com seu celular.
+
+CONECTE SEU MAC
+Para ver leituras em tempo real, instale o coletor gratuito do Quota no Mac em que você usa o Claude Code, o Codex ou o Gemini CLI. Ele usa o login que você já tem no provedor para solicitar os limites de uso a esse provedor. Pareie o app colando o link de pareamento do seu Mac. Mantenha o Mac on-line para receber leituras atualizadas; a atualização dos widgets em segundo plano é agendada pelo sistema operacional.
+
+Configuração e download do coletor: https://quota.sceneview.dev/setup.html
+
+PRIVACIDADE DESDE A CONCEPÇÃO
+Sem anúncios, análises ou rastreamento. Suas credenciais do provedor ficam no seu Mac e são usadas apenas para autenticar você no respectivo provedor. O relay recebe porcentagens de uso, horários de redefinição, nomes de plano e um identificador de pareamento aleatório, nunca prompts, código-fonte ou credenciais do provedor. Você pode usar o relay hospedado ou configurar o seu próprio.
+
+Ao desconectar, o pareamento é removido deste dispositivo. Os snapshots hospedados expiram sete dias após a última coleta; o histórico expira após 24 horas. Para interromper a coleta, desinstale o coletor do Mac seguindo as instruções de configuração.
+
+O Quota é gratuito e não tem compras no app. É uma ferramenta independente, sem afiliação com a Anthropic, a OpenAI ou o Google. A disponibilidade de cada provedor depende da sua conta e dos dados que ele disponibiliza. O app está em inglês.
+
+O Quota não é endossado nem patrocinado pela Anthropic, pela OpenAI ou pelo Google. Todas as marcas registradas pertencem aos respectivos proprietários.

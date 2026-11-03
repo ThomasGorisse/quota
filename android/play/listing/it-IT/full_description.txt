@@ -1,0 +1,27 @@
+Conosci la tua capacità di IA prima di iniziare.
+
+Quota riunisce i limiti di utilizzo di Claude, Codex e Gemini in una dashboard chiara e pacata. Un anello per ogni provider evidenzia il limite più vicino all'esaurimento, con accanto il nome della finestra e l'orario di reset. Gli altri limiti sono a portata di tocco o di sguardo.
+
+LA TUA CAPACITÀ, IN CHIARO
+• Passa dalla capacità residua all'utilizzo consumato e viceversa. La tua preferenza si sincronizza tra gli schermi collegati.
+• Visualizza i limiti di sessione, settimanali, di riserva e per modello quando il tuo provider li comunica.
+• Leggi gli orari di reset in parole semplici.
+• Riconosci le rilevazioni vecchie: i valori diventano grigi quando non sono aggiornati, anche se un altro provider si è aggiornato.
+• Prova i dati di esempio prima di configurare qualsiasi cosa. Per esplorare non serve accedere.
+
+NELLA SCHERMATA HOME
+Aggiungi widget compatti o grandi per tenere d'occhio la tua capacità senza aprire l'app. I temi chiaro e scuro si adattano al tuo telefono.
+
+COLLEGA IL TUO MAC
+Per rilevazioni in tempo reale, installa il collector gratuito di Quota sul Mac su cui usi Claude Code, Codex o Gemini CLI. Sfrutta l'accesso che hai già effettuato presso il provider per richiedergli i limiti di utilizzo. Abbina l'app incollando il link di abbinamento dal tuo Mac. Tieni il Mac online per ricevere rilevazioni aggiornate; l'aggiornamento dei widget in background è pianificato dal sistema operativo.
+
+Configurazione e download del collector: https://quota.sceneview.dev/setup.html
+
+PRIVACY FIN DALLA PROGETTAZIONE
+Nessuna pubblicità, nessuna analisi, nessun tracciamento. Le credenziali del provider restano sul tuo Mac e vengono usate solo per autenticarti presso il provider corrispondente. Il relay riceve percentuali di utilizzo, orari di reset, nomi dei piani e un identificatore di abbinamento casuale, mai prompt, codice sorgente o credenziali del provider. Puoi usare il relay ospitato o configurarne uno tuo.
+
+La disconnessione rimuove l'abbinamento da questo dispositivo. Le rilevazioni ospitate scadono sette giorni dopo l'ultima raccolta; la cronologia scade dopo 24 ore. Per interrompere la raccolta, disinstalla il collector dal Mac seguendo le istruzioni di configurazione.
+
+Quota è gratuito e non prevede acquisti in-app. È uno strumento indipendente, non affiliato ad Anthropic, OpenAI o Google. La disponibilità dei provider dipende dal tuo account e dai dati che ciascun provider rende disponibili. L'app è in inglese.
+
+Quota non è approvato né sponsorizzato da Anthropic, OpenAI o Google. Tutti i marchi appartengono ai rispettivi proprietari.

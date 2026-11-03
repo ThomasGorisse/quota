@@ -1,0 +1,27 @@
+Sprawdź, ile AI Ci zostało, zanim zaczniesz.
+
+Quota zbiera limity użycia Claude, Codex i Gemini w spokojnym, przejrzystym panelu. Jeden pierścień na dostawcę wyróżnia limit najbliższy wyczerpania, a obok pokazuje nazwę okna i godzinę resetu. Pozostałe limity są o jedno dotknięcie lub spojrzenie dalej.
+
+TWOJE LIMITY, CZYTELNIE
+• Przełączaj między pozostałą pulą a zużyciem. Twój wybór synchronizuje się między połączonymi ekranami.
+• Sprawdzaj limity sesji, tygodniowe, rezerwowe i dla poszczególnych modeli, jeśli dostawca je udostępnia.
+• Czytaj godziny resetu w prostych słowach.
+• Rozpoznawaj stare odczyty: wartości szarzeją, gdy są nieaktualne, nawet jeśli inny dostawca już się odświeżył.
+• Wypróbuj przykładowe dane przed jakąkolwiek konfiguracją. Do przeglądania nie trzeba się logować.
+
+NA EKRANIE GŁÓWNYM
+Dodaj kompaktowe lub duże widżety, aby mieć swoją pulę na widoku bez otwierania aplikacji. Jasny i ciemny wygląd pasują do Twojego telefonu.
+
+POŁĄCZ SWOJEGO MACA
+Aby otrzymywać odczyty na żywo, zainstaluj darmowy kolektor Quota na Macu, na którym używasz Claude Code, Codex lub Gemini CLI. Korzysta on z Twojego istniejącego logowania u dostawcy, aby pobierać od niego limity użycia. Sparuj aplikację, wklejając link parowania z Maca. Zostaw Maca online, aby odczyty były aktualne; odświeżanie widżetów w tle planuje system operacyjny.
+
+Konfiguracja i pobieranie kolektora: https://quota.sceneview.dev/setup.html
+
+PRYWATNOŚĆ OD PODSTAW
+Bez reklam, analityki i śledzenia. Twoje dane logowania do dostawcy zostają na Macu i służą wyłącznie do uwierzytelnienia u danego dostawcy. Serwer pośredniczący otrzymuje procenty użycia, godziny resetu, nazwy planów i losowy identyfikator parowania, nigdy prompty, kod źródłowy ani dane logowania do dostawcy. Możesz korzystać z hostowanego serwera pośredniczącego lub skonfigurować własny.
+
+Rozłączenie usuwa parowanie z tego urządzenia. Hostowane odczyty wygasają siedem dni po ostatnim zbieraniu danych, a historia po 24 godzinach. Aby zatrzymać zbieranie, odinstaluj kolektor z Maca zgodnie z instrukcjami konfiguracji.
+
+Quota jest darmowa i nie ma zakupów w aplikacji. To niezależne narzędzie, niepowiązane z Anthropic, OpenAI ani Google. Dostępność dostawców zależy od Twojego konta i danych udostępnianych przez każdego z nich. Aplikacja jest dostępna tylko po angielsku.
+
+Quota nie jest popierana ani sponsorowana przez Anthropic, OpenAI ani Google. Wszystkie znaki towarowe należą do ich właścicieli.

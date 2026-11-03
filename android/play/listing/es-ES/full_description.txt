@@ -1,0 +1,27 @@
+Conoce tu capacidad de IA antes de empezar.
+
+Quota reúne los límites de uso de Claude, Codex y Gemini en un panel claro y sereno. Un anillo por proveedor destaca el límite más cerca de agotarse, con el nombre de la ventana y la hora de reinicio al lado. El resto de los límites quedan a un toque o un vistazo.
+
+TU CAPACIDAD, CON CLARIDAD
+• Alterna entre la capacidad restante y el uso consumido. Tu preferencia se sincroniza entre tus pantallas conectadas.
+• Consulta los límites de sesión, semanales, de reserva y por modelo cuando tu proveedor los facilita.
+• Lee las horas de reinicio en lenguaje sencillo.
+• Identifica las lecturas antiguas: los valores se vuelven grises cuando están desactualizados, aunque otro proveedor se haya actualizado.
+• Prueba con datos de ejemplo antes de configurar nada. No hace falta iniciar sesión para explorar.
+
+EN TU PANTALLA DE INICIO
+Añade widgets compactos o grandes para tener tu capacidad a la vista sin abrir la aplicación. Los aspectos claro y oscuro se adaptan a tu móvil.
+
+CONECTA TU MAC
+Para obtener lecturas en directo, instala el recopilador gratuito de Quota en el Mac donde usas Claude Code, Codex o Gemini CLI. Aprovecha la sesión que ya tienes iniciada con el proveedor para pedirle los límites de uso. Vincula la aplicación pegando el enlace de vinculación desde tu Mac. Mantén el Mac conectado para recibir lecturas actualizadas; el sistema operativo programa la actualización de los widgets en segundo plano.
+
+Configuración y descarga del recopilador: https://quota.sceneview.dev/setup.html
+
+PRIVACIDAD DESDE EL DISEÑO
+Sin anuncios, analíticas ni seguimiento. Tus credenciales del proveedor se quedan en tu Mac y solo se usan para autenticarte con el proveedor correspondiente. El relay recibe porcentajes de uso, horas de reinicio, nombres de plan y un identificador de vinculación aleatorio, nunca prompts, código fuente ni credenciales del proveedor. Puedes usar el relay alojado o configurar el tuyo propio.
+
+Al desconectar, se elimina la vinculación de este dispositivo. Las instantáneas alojadas caducan siete días después de la última recopilación; el historial caduca a las 24 horas. Para detener la recopilación, desinstala el recopilador del Mac siguiendo las instrucciones de configuración.
+
+Quota es gratuito y no tiene compras dentro de la aplicación. Es una herramienta independiente, sin afiliación con Anthropic, OpenAI ni Google. La disponibilidad de cada proveedor depende de tu cuenta y de los datos que este ofrece. La aplicación está en inglés.
+
+Quota no cuenta con el respaldo ni el patrocinio de Anthropic, OpenAI ni Google. Todas las marcas comerciales pertenecen a sus respectivos propietarios.

@@ -1,0 +1,27 @@
+Connaissez votre capacité d'IA avant de vous lancer.
+
+Quota réunit les limites d'usage de Claude, Codex et Gemini dans un tableau de bord sobre et lisible. Pour chaque fournisseur, un anneau met en avant la limite la plus proche de zéro, avec à côté le nom de la fenêtre et l'heure de réinitialisation. Les autres limites sont à un geste ou à un regard.
+
+VOTRE CAPACITÉ, EN CLAIR
+• Basculez entre la capacité restante et l'usage consommé. Votre choix se synchronise sur vos écrans connectés.
+• Consultez les limites de session, hebdomadaires, de réserve et par modèle lorsque votre fournisseur les communique.
+• Lisez les heures de réinitialisation en langage clair.
+• Repérez les relevés anciens : les valeurs passent au gris lorsqu'elles ne sont plus à jour, même si un autre fournisseur a été actualisé.
+• Essayez des données d'exemple avant toute configuration. Aucune connexion n'est nécessaire pour explorer.
+
+SUR VOTRE ÉCRAN D'ACCUEIL
+Ajoutez des widgets compacts ou grands pour garder votre capacité en vue sans ouvrir l'application. Les thèmes clair et sombre s'accordent à votre téléphone.
+
+CONNECTEZ VOTRE MAC
+Pour des relevés en direct, installez le collecteur Quota gratuit sur le Mac où vous utilisez Claude Code, Codex ou Gemini CLI. Il s'appuie sur votre connexion existante au fournisseur pour lui demander vos limites d'usage. Associez l'application en collant le lien d'association copié depuis votre Mac. Laissez le Mac en ligne pour obtenir des relevés à jour ; l'actualisation des widgets en arrière-plan est planifiée par le système d'exploitation.
+
+Configuration et téléchargement du collecteur : https://quota.sceneview.dev/setup.html
+
+CONFIDENTIALITÉ DÈS LA CONCEPTION
+Ni publicité, ni statistiques, ni pistage. Vos identifiants de fournisseur restent sur votre Mac et ne servent qu'à vous authentifier auprès du fournisseur concerné. Le relais reçoit des pourcentages d'usage, des heures de réinitialisation, des intitulés d'offre et un identifiant d'association aléatoire, jamais de prompts, de code source ni d'identifiants de fournisseur. Vous pouvez utiliser le relais hébergé ou configurer le vôtre.
+
+La déconnexion supprime l'association de cet appareil. Les relevés hébergés expirent sept jours après la dernière collecte ; l'historique expire au bout de 24 heures. Pour arrêter la collecte, désinstallez le collecteur Mac en suivant les instructions de configuration.
+
+Quota est gratuit et ne propose aucun achat intégré. C'est un outil indépendant, non affilié à Anthropic, OpenAI ou Google. La disponibilité des fournisseurs dépend de votre compte et des données que chacun d'eux expose. L'application est en anglais.
+
+Quota n'est ni approuvé ni sponsorisé par Anthropic, OpenAI ou Google. Toutes les marques appartiennent à leurs propriétaires respectifs.

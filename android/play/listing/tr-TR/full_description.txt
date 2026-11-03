@@ -1,0 +1,27 @@
+Başlamadan önce ne kadar yapay zekâ kapasiteniz kaldığını bilin.
+
+Quota; Claude, Codex ve Gemini kullanım limitlerini sade ve anlaşılır bir panelde bir araya getirir. Her sağlayıcı için bir halka, tükenmeye en yakın limiti öne çıkarır; yanında pencere adı ve sıfırlanma zamanı yer alır. Diğer limitler bir dokunuş ya da bir bakış uzağınızdadır.
+
+KAPASİTENİZ, NET BİÇİMDE
+• Kalan kapasite ile harcanan kullanım arasında geçiş yapın. Tercihiniz bağlı ekranlarınız arasında senkronize edilir.
+• Sağlayıcınız bildirdiğinde oturum, haftalık, rezerv ve model limitlerini görün.
+• Sıfırlanma zamanlarını sade bir dille okuyun.
+• Eski verileri fark edin: Değerler güncelliğini yitirdiğinde, başka bir sağlayıcı yenilenmiş olsa bile griye döner.
+• Hiçbir şey ayarlamadan önce örnek verileri deneyin. Keşfetmek için oturum açmanız gerekmez.
+
+ANA EKRANINIZDA
+Uygulamayı açmadan kapasitenizi görmek için kompakt veya büyük widget'lar ekleyin. Açık ve koyu görünümler telefonunuza uyum sağlar.
+
+MAC'İNİZİ BAĞLAYIN
+Canlı veriler için ücretsiz Quota toplayıcısını, Claude Code, Codex veya Gemini CLI kullandığınız Mac'e yükleyin. Toplayıcı, kullanım limitlerini sağlayıcıdan istemek için o sağlayıcıdaki mevcut oturumunuzu kullanır. Mac'inizden aldığınız eşleştirme bağlantısını yapıştırarak uygulamayı eşleştirin. Güncel veriler için Mac'i çevrimiçi tutun; widget'ların arka planda yenilenmesini işletim sistemi planlar.
+
+Kurulum ve toplayıcıyı indirme: https://quota.sceneview.dev/setup.html
+
+TASARIM GEREĞİ GİZLİLİK
+Reklam, analiz veya takip yok. Sağlayıcı kimlik bilgileriniz Mac'inizde kalır ve yalnızca ilgili sağlayıcıda kimlik doğrulamak için kullanılır. Aktarma sunucusu kullanım yüzdelerini, sıfırlanma zamanlarını, plan adlarını ve rastgele bir eşleştirme kimliğini alır; istemleri, kaynak kodunu veya sağlayıcı kimlik bilgilerini asla almaz. Barındırılan aktarma sunucusunu kullanabilir ya da kendinizinkini yapılandırabilirsiniz.
+
+Bağlantıyı kesmek, eşleştirmeyi bu cihazdan kaldırır. Barındırılan anlık görüntülerin süresi son toplamadan yedi gün sonra, geçmişin süresi ise 24 saat sonra dolar. Toplamayı durdurmak için kurulum talimatlarını izleyerek Mac toplayıcısını kaldırın.
+
+Quota ücretsizdir ve uygulama içi satın alma içermez. Anthropic, OpenAI veya Google ile bağlantısı olmayan bağımsız bir araçtır. Sağlayıcıların kullanılabilirliği hesabınıza ve her sağlayıcının sunduğu verilere bağlıdır. Uygulama İngilizcedir.
+
+Quota'nın Anthropic, OpenAI veya Google tarafından onayı ya da sponsorluğu yoktur. Tüm ticari markalar ilgili sahiplerine aittir.

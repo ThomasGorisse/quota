@@ -1,0 +1,27 @@
+Ketahui kapasitas AI Anda sebelum mulai.
+
+Quota menyatukan batas penggunaan Claude, Codex, dan Gemini dalam dasbor yang tenang dan jelas. Satu cincin per penyedia menyorot batas yang paling dekat habis, lengkap dengan nama jendela waktu dan waktu reset di sampingnya. Batas lainnya bisa dilihat dengan sekali ketuk atau sekilas pandang.
+
+KAPASITAS ANDA, DENGAN JELAS
+• Beralih antara kapasitas tersisa dan penggunaan yang terpakai. Preferensi Anda disinkronkan ke semua layar yang terhubung.
+• Lihat batas sesi, mingguan, cadangan, dan per model jika penyedia Anda melaporkannya.
+• Baca waktu reset dalam kalimat yang mudah dipahami.
+• Kenali data lama: nilai berubah menjadi abu-abu saat sudah tidak terbaru, meskipun penyedia lain sudah diperbarui.
+• Coba data contoh sebelum mengatur apa pun. Tidak perlu login untuk menjelajah.
+
+DI LAYAR UTAMA ANDA
+Tambahkan widget ringkas atau besar agar kapasitas Anda selalu terlihat tanpa membuka aplikasi. Tampilan terang dan gelap menyesuaikan dengan ponsel Anda.
+
+HUBUNGKAN MAC ANDA
+Untuk data langsung, instal kolektor Quota gratis di Mac tempat Anda menggunakan Claude Code, Codex, atau Gemini CLI. Kolektor memakai login penyedia yang sudah ada untuk meminta batas penggunaan dari penyedia tersebut. Pasangkan aplikasi dengan menempelkan tautan pairing dari Mac Anda. Biarkan Mac tetap online agar data selalu terbaru; penyegaran widget di latar belakang dijadwalkan oleh sistem operasi.
+
+Penyiapan dan unduhan kolektor: https://quota.sceneview.dev/setup.html
+
+PRIVASI SEJAK TAHAP DESAIN
+Tanpa iklan, analitik, atau pelacakan. Kredensial penyedia Anda tetap berada di Mac dan hanya digunakan untuk autentikasi ke penyedia yang bersangkutan. Server relay menerima persentase penggunaan, waktu reset, nama paket, dan ID pairing acak, tidak pernah prompt, kode sumber, atau kredensial penyedia. Anda dapat menggunakan relay yang dihosting atau mengonfigurasi relay sendiri.
+
+Memutuskan sambungan akan menghapus pairing dari perangkat ini. Snapshot yang dihosting kedaluwarsa tujuh hari setelah pengumpulan terakhir; riwayat kedaluwarsa setelah 24 jam. Untuk menghentikan pengumpulan, copot pemasangan kolektor Mac sesuai petunjuk penyiapan.
+
+Quota gratis dan tidak memiliki pembelian dalam aplikasi. Quota adalah alat independen yang tidak berafiliasi dengan Anthropic, OpenAI, atau Google. Ketersediaan penyedia bergantung pada akun Anda dan data yang disediakan masing-masing penyedia. Aplikasi ini berbahasa Inggris.
+
+Quota tidak didukung atau disponsori oleh Anthropic, OpenAI, atau Google. Semua merek dagang adalah milik pemiliknya masing-masing.

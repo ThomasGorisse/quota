@@ -1,0 +1,27 @@
+Know your AI capacity before you start.
+
+Quota brings Claude, Codex and Gemini usage limits together in a calm, clear dashboard. One ring per provider highlights the limit closest to empty, with the window name and reset time beside it. Other limits stay one tap or glance away.
+
+YOUR CAPACITY, CLEARLY
+• Switch between capacity left and usage spent. Your preference syncs across your connected screens.
+• See session, weekly, reserve and model limits when your provider reports them.
+• Read reset times in plain words.
+• Recognize old readings: values turn grey when they are out of date, even if another provider has refreshed.
+• Try sample data before setting anything up. No sign-in is needed to explore.
+
+ON YOUR HOME SCREEN
+Add compact or large widgets to keep your capacity visible without opening the app. Light and dark appearances fit your phone.
+
+CONNECT YOUR MAC
+For live readings, install the free Quota collector on the Mac where you use Claude Code, Codex or Gemini CLI. It uses your existing provider sign-in to request usage limits from that provider. Pair the app by pasting the pairing link from your Mac. Keep the Mac online for updated readings; background widget refresh is scheduled by the operating system.
+
+Setup and collector download: https://quota.sceneview.dev/setup.html
+
+PRIVACY BY DESIGN
+No ads, analytics or tracking. Your provider credentials stay on your Mac and are used only to authenticate with the respective provider. The relay receives usage percentages, reset times, plan labels and a random pairing identifier, never prompts, source code or provider credentials. You can use the hosted relay or configure your own.
+
+Disconnecting removes the pairing from this device. Hosted snapshots expire seven days after the last collection; history expires after 24 hours. To stop collection, uninstall the Mac collector using the setup instructions.
+
+Quota is free and has no in-app purchases. It is an independent tool, not affiliated with Anthropic, OpenAI or Google. Provider availability depends on your account and the data each provider exposes.
+
+Quota is not endorsed or sponsored by Anthropic, OpenAI or Google. All trademarks belong to their respective owners.
