@@ -1,1 +1,1 @@
-在主畫面查看 Claude、Codex 和 Gemini 的用量上限：剩下多少，或已用多少。
+在主畫面查看 Claude、Codex 和 Gemini 的用量上限。即時資料需要一台 Mac。

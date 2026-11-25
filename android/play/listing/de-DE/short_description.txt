@@ -1,1 +1,1 @@
-Claude-, Codex- und Gemini-Limits auf dem Startbildschirm: Rest oder Verbrauch.
+Claude-, Codex- und Gemini-Limits auf dem Homescreen. Live-Werte nur mit Mac.

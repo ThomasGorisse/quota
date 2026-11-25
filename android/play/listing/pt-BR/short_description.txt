@@ -1,1 +1,1 @@
-Limites do Claude, Codex e Gemini na tela inicial: quanto resta ou já foi usado.
+Limites do Claude, Codex e Gemini na tela inicial. Dados ao vivo exigem um Mac.

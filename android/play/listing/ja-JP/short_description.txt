@@ -1,1 +1,1 @@
-Claude、Codex、Gemini の利用上限をホーム画面に。残り容量でも使用量でも表示できます。
+Claude、Codex、Gemini の利用上限をホーム画面に。リアルタイム表示には Mac が必要です。
